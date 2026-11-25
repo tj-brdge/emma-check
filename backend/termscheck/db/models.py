@@ -171,3 +171,16 @@ class Computation(Base):
     bondmath_version: Mapped[str] = mapped_column(String(16))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     finding: Mapped[Finding] = relationship(back_populates="computations")
+
+
+class ReviewAction(Base):
+    """Append-only reviewer actions; Finding.status is a cache derived from these."""
+    __tablename__ = "review_action"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    finding_id: Mapped[int] = mapped_column(ForeignKey("finding.id"), index=True)
+    action: Mapped[str] = mapped_column(String(16))
+    from_status: Mapped[str] = mapped_column(String(16))
+    to_status: Mapped[str] = mapped_column(String(16))
+    comment: Mapped[str | None] = mapped_column(Text)
+    actor: Mapped[str] = mapped_column(String(128))
+    at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

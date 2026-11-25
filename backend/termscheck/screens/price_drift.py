@@ -95,7 +95,7 @@ class PriceDriftScreen:
                     and -slope_yr * 1e4 >= config.drift_min_yield_slope_bp):
                 flags.append(Flag(
                     self.rule, cusip,
-                    clamp_severity(45 + excess * 600 + (r2 - config.drift_min_r2) * 100),
+                    clamp_severity(40 + excess * 300 + (r2 - config.drift_min_r2) * 50),
                     f"'Clean' price {pts[0].price:.3f} -> {pts[-1].price:.3f}: implied yield under vendor "
                     f"terms falls {slope_yr * 1e4:+.0f} bp/yr net of market (R² {r2:.3f}), i.e. "
                     f"{excess:.1%}/yr of price growth the vendor terms do not explain - consistent "

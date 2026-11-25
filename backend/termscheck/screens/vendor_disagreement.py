@@ -40,7 +40,7 @@ class VendorDisagreementScreen:
             if abs(a.price - b.price) > config.vendor_price_tolerance:
                 diffs["price"] = {a.vendor: a.price, b.vendor: b.price}
             if diffs:
-                sev = clamp_severity(20 + sum(WEIGHTS[k] for k in diffs))
+                sev = clamp_severity(15 + 0.8 * sum(WEIGHTS[k] for k in diffs))
                 flags.append(Flag(
                     self.rule, cusip, sev,
                     "Vendors disagree on " + ", ".join(diffs) + ".",

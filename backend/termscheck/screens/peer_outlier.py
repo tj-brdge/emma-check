@@ -84,7 +84,7 @@ class PeerOutlierScreen:
             if abs(z) > config.peer_z_threshold:
                 rec = data.primary[cusip]
                 flags.append(Flag(
-                    self.rule, cusip, clamp_severity(25 + abs(z) * 5),
+                    self.rule, cusip, clamp_severity(20 + 3.5 * abs(z)),
                     f"Yield {y:.2%} vs {expected(k):.2%} expected for {rec.sector} / {k[1]} / {k[0]} "
                     f"peers ({r * 1e4:+.0f} bp, robust z {z:+.1f}).",
                     {"yield": y, "yield_source": "vendor" if rec.vendor_yield is not None else "implied",

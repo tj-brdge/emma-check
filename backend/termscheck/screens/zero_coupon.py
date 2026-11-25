@@ -22,7 +22,7 @@ class ZeroCouponScreen:
             y = ctx.implied_yields.get(cusip)
             flags.append(Flag(
                 self.rule, cusip,
-                clamp_severity(50 + (rec.price - config.zero_near_par_price) * 0.8 + years * 2),
+                clamp_severity(45 + min(30.0, (rec.price - config.zero_near_par_price) * 0.5) + min(20.0, years * 2)),
                 f"Zero coupon priced {rec.price:.3f} with {years:.1f} years to maturity "
                 f"(implied yield {'n/a' if y is None else f'{y:.2%}'}).",
                 {"price": rec.price, "coupon": rec.coupon, "maturity_date": rec.maturity_date.isoformat(),
