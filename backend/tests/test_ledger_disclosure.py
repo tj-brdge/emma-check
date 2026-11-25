@@ -37,7 +37,7 @@ def test_disclosure_parse_with_locators_and_blanks():
     obs = p.by_cusip()[C1]
     assert [o.month for o in obs] == [date(2026, 9, 1), date(2026, 10, 1)]
     assert obs[0].net_coupon == pytest.approx(0.0481) and obs[1].net_coupon is None   # blank stays blank
-    assert obs[0].source == "pools.txt:row 1:Net Coupon"
+    assert obs[0].source == "pools.txt:row 1"
     assert p.by_cusip()[C2][0].month == date(2026, 11, 1)
 
 
@@ -75,7 +75,7 @@ def test_ledger_and_disclosure_drive_mbs_cash_reconciliation(client, engine):
     assert d.status_code == 200, d.text
     assert d.json()["doc_kind"] == "pool_disclosure" and d.json()["asset_class"] == "agency_mbs"
     obs = client.get(f"/api/cusips/{C1}/disclosures").json()
-    assert obs[0]["locator"] == "pool.csv:row 1:net_coupon" and len(obs) == 3
+    assert obs[0]["locator"] == "pool.csv:row 1" and len(obs) == 3
     run = client.post("/api/screen-runs", json={"as_of": "2026-11-30", "holdings_batch_id": hid,
                                                 "ledger_batch_id": lid.json()["batch"]["id"]}).json()
     assert run["ledger_batch_id"] and run["disclosure_document_ids"] == [d.json()["id"]]

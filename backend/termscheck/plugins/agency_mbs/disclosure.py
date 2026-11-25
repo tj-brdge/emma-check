@@ -3,7 +3,7 @@
 Real Freddie Mac disclosure layouts were not available, so columns are matched through a
 configurable alias mapping (DEFAULT_MAPPING). Supporting a real file means adding its column
 names here (or passing a mapping), not changing code. Blank values stay None and every value
-keeps a ``file:row:column`` locator so a reviewer can trace it.
+keeps a ``file:row`` locator (consumers name the field) so a reviewer can trace it.
 """
 from __future__ import annotations
 
@@ -110,7 +110,7 @@ def parse_pool_disclosure(filename: str, text: str, mapping: dict[str, tuple[str
                 vals[k] = None
         if vals["factor"] is not None and not 0 <= vals["factor"] <= 1.5:
             out.errors.append(f"row {n}: factor {vals['factor']} out of range")
-        loc = f"{filename}:row {n}:{out.columns.get('net_coupon', out.columns['factor'])}"
+        loc = f"{filename}:row {n}"             # consumers append the field they cite
         out.rows.append(DisclosureRow(cusip, PeriodObservation(
             month, vals["factor"], None if vals["net_coupon"] is None else vals["net_coupon"] / 100.0, loc),
             n, {k: v for k, v in row.items() if k is not None}))

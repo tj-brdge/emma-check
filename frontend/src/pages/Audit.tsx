@@ -15,7 +15,7 @@ export default function Audit() {
   }, [type]);
 
   const types = ["", "upload.accepted", "upload.rejected", "screen_run.completed", "document.registered", "extraction.completed",
-    "extraction.failed", "finding.created", "review.approve", "review.reject", "review.annotate", "review.reopen", "export.approved_csv"];
+    "extraction.failed", "computation.created", "finding.created", "review.approve", "review.reject", "review.annotate", "review.reopen", "export.approved_csv"];
 
   return (
     <>

@@ -2,12 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { api } from "../api";
 import { RULE_LABEL, ts, usd } from "../format";
 import type { FindingSummary } from "../types";
+import { AssetChip } from "../components";
 
 type Filter = "open" | "approved" | "rejected" | "all";
 
 export default function Queue() {
   const [rows, setRows] = useState<FindingSummary[] | null>(null);
   const [filter, setFilter] = useState<Filter>("open");
+  const [asset, setAsset] = useState<string>("all");
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
@@ -27,7 +29,7 @@ export default function Queue() {
     return s;
   }, [rows]);
 
-  const shown = (rows ?? []).filter((r) => filter === "all" || r.status === filter);
+  const shown = (rows ?? []).filter((r) => (filter === "all" || r.status === filter) && (asset === "all" || r.asset_class === asset));
 
   return (
     <>
@@ -63,6 +65,11 @@ export default function Queue() {
             </button>
           ))}
         </div>
+        <div className="tabs">
+          {[["all", "All classes"], ["muni", "Municipal"], ["agency_mbs", "Agency MBS"]].map(([k, l]) => (
+            <button key={k} className={asset === k ? "on" : ""} onClick={() => setAsset(k)}>{l}</button>
+          ))}
+        </div>
         <span className="muted">sorted by absolute income impact</span>
         <div className="spacer" />
         <button
@@ -81,6 +88,7 @@ export default function Queue() {
             <tr>
               <th className="n">Income impact</th>
               <th className="n">12m run-rate</th>
+              <th>Class</th>
               <th>CUSIP</th>
               <th>Description</th>
               <th>Finding</th>
@@ -93,12 +101,12 @@ export default function Queue() {
           <tbody>
             {rows === null && (
               <tr>
-                <td colSpan={9} className="muted">Loading…</td>
+                <td colSpan={10} className="muted">Loading…</td>
               </tr>
             )}
             {rows !== null && shown.length === 0 && (
               <tr>
-                <td colSpan={9} className="muted">
+                <td colSpan={10} className="muted">
                   No {filter === "all" ? "" : filter} findings. Flagged CUSIPs become findings once their official
                   statement is analysed (Screen flags tab).
                 </td>
@@ -110,6 +118,7 @@ export default function Queue() {
                   {usd(r.income_impact_usd)}
                 </td>
                 <td className="n">{usd(r.run_rate_gap_usd)}</td>
+                <td><AssetChip c={r.asset_class} /></td>
                 <td className="mono">{r.cusip}</td>
                 <td>{r.description}</td>
                 <td className="wrap">{r.headline}</td>

@@ -58,8 +58,8 @@ def test_m01_finding_from_supplement_disclosure_and_cash(client, combined_run, m
     assert f["asset_class"] == "agency_mbs" and f["income_impact_usd"] > 10_000
     assert "0.000%" in f["headline"] and "confirmed by cash" in f["headline"]
     assert "FactSet: coupon BLANK" in f["narrative"]["vendor_says"]
-    nc = next(row for row in f["comparison"] if row["field"].startswith("Net coupon"))
-    assert nc["vendor"] == "0.000%" and nc["locator"].startswith("mbs_pool_disclosure.csv:row")
+    nc = next(row for row in f["comparison"] if row["field"].startswith("Net coupon ("))
+    assert nc["vendor"] == "0.000%" and nc["locator"].startswith("mbs_pool_disclosure.csv:row") and nc["locator"].endswith("net coupon") and nc["page"] is None
     cur = next(o for o in h.observations if o.month.isoformat() == "2026-11-01")
     assert nc["document"] == f"{cur.net_coupon:.3%}"
     metrics = {m["label"]: m["value"] for m in f["narrative"]["metrics"]}

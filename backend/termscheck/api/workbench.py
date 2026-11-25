@@ -45,21 +45,22 @@ def flagged_cusips(run_id: int, session: Session = Depends(get_session)):
             "accrual_type": v.accrual_type, "vendor_yield": v.vendor_yield, "rating": v.rating,
             "asset_class": v.asset_class, "field_states": v.field_states,
             "sector": v.sector, "max_severity": max(f.severity for f in fl),
-            "flags": [{"rule": f.rule, "severity": f.severity, "message": f.message} for f in
-                      sorted(fl, key=lambda x: -x.severity)],
+            "flags": [{"rule": f.rule, "severity": f.severity, "confidence": f.confidence, "message": f.message}
+                      for f in sorted(fl, key=lambda x: -x.severity * x.confidence)],
+            "priority": max(f.severity * f.confidence for f in fl),
             "document_id": doc.id if doc else None,
             "extraction_id": ex.id if ex else None, "extraction_status": ex.status if ex else None,
             "finding_id": fi.id if fi else None, "finding_status": fi.status if fi else None,
             "income_impact_usd": fi.income_impact_usd if fi else None,
         })
-    out.sort(key=lambda r: (-r["max_severity"], -len(r["flags"]), -r["par"]))
+    out.sort(key=lambda r: (-r["priority"], -r["max_severity"], -len(r["flags"]), -r["par"]))
     return {"run": {"id": run.id, "as_of": run.as_of.isoformat(), "flag_count": run.flag_count}, "cusips": out}
 
 
 @router.get("/cusips/{cusip}/flags")
 def cusip_flags(cusip: str, run_id: int, session: Session = Depends(get_session)):
-    return [{"rule": f.rule, "severity": f.severity, "message": f.message, "inputs": f.inputs,
-             "computed": f.computed} for f in session.scalars(
+    return [{"rule": f.rule, "severity": f.severity, "confidence": f.confidence, "message": f.message,
+             "inputs": f.inputs, "computed": f.computed} for f in session.scalars(
         select(ScreenFlag).where(ScreenFlag.run_id == run_id, ScreenFlag.cusip == cusip.upper())
         .order_by(ScreenFlag.severity.desc()))]
 

@@ -52,8 +52,8 @@ def test_flagged_cusips_view(client, screened, dataset):
     body = client.get(f"/api/screen-runs/{screened['run']}/cusips").json()
     cusips = {c["cusip"] for c in body["cusips"]}
     assert dataset.defect_cusips <= cusips
-    sev = [c["max_severity"] for c in body["cusips"]]
-    assert sev == sorted(sev, reverse=True)
+    pri = [c["priority"] for c in body["cusips"]]
+    assert pri == sorted(pri, reverse=True)          # severity x confidence
     make_finding(client, screened, dataset)
     d01 = next(x for x in dataset.defects if x.defect_id.startswith("D01")).cusip
     row = next(c for c in client.get(f"/api/screen-runs/{screened['run']}/cusips").json()["cusips"] if c["cusip"] == d01)

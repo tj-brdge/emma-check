@@ -38,7 +38,7 @@ class FactorMismatchScreen:
                                   f"{': stale factor' if stale else ''} ({rel:.1%} of face).",
                                   {"book_factor": rec.factor, "book_factor_date": rec.factor_date and rec.factor_date.isoformat()},
                                   {"disclosed_factor": disc.factor, "disclosed_month": disc.month.isoformat(),
-                                   "relative_difference": rel, "stale": stale, "locator": disc.source}))
+                                   "relative_difference": rel, "stale": stale, "locator": f"{disc.source} · factor"}))
         return flags
 
 
@@ -63,5 +63,5 @@ class RateVsDisclosureScreen:
                                   f"{disc.month:%Y-%m}" + ("" if gap is None else f" ({gap:+.0f} bp)") + ".",
                                   {"book_coupon": book_txt if book is None else book, "rate_type": rec.rate_type},
                                   {"disclosed_net_coupon": disc.net_coupon, "disclosed_month": disc.month.isoformat(),
-                                   "gap_bp": gap, "locator": disc.source}))
+                                   "gap_bp": gap, "locator": f"{disc.source} · net coupon"}))
         return flags

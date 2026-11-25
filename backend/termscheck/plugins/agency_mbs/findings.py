@@ -101,24 +101,31 @@ def build_mbs_finding(rec: SecurityRecord, positions: list[Position], terms_json
                (" (confirmed by cash)" if t.cash_implied_rate is not None and t.current_rate is not None
                 and abs(t.cash_implied_rate - t.current_rate) < 0.0015 else "")
 
-    def row(name, vendor, doc, field_name, match, locator=None):
-        cc = (c or {}).get(field_name, {})
+    def row(name, vendor, doc, field_name, match, locator=None, cite_doc=True):
+        cc = (c or {}).get(field_name, {}) if cite_doc else {}
         return {"field": name, "vendor": vendor, "document": doc, "match": match, "page": cc.get("page"),
                 "excerpt": cc.get("excerpt"), "citation_status": cc.get("status"), "locator": locator,
                 "other_sources": {s.vendor: show(s, field_name if field_name in ("coupon", "factor") else "coupon")
                                   for s in others} if field_name in ("coupon",) else None}
 
+    factor_obs = next((o for o in sorted(observations or [], key=lambda o: o.month, reverse=True)
+                       if o.factor is not None and o.month <= as_of.replace(day=1)), None)
     comparison = [
-        row("Net coupon (current month)", book_txt, doc_txt, "net_coupon_pct",
+        row(f"Net coupon ({as_of:%b %Y})", book_txt, doc_txt, "net_coupon_pct",
             rec.coupon is not None and t.current_rate is not None and abs(rec.coupon - t.current_rate) < 5e-5,
-            disc_rate.source if disc_rate else None),
+            f"{disc_rate.source} · net coupon" if disc_rate else None, cite_doc=disc_rate is None),
+        row("Stated net coupon (document)", book_txt,
+            "not stated" if terms_json.get("net_coupon") is None else f"{terms_json['net_coupon']:.3%}",
+            "net_coupon_pct", rec.coupon is not None and terms_json.get("net_coupon") is not None
+            and abs(rec.coupon - terms_json["net_coupon"]) < 5e-5),
         row("Rate type", show(rec, "rate_type"), rt, "rate_type", (rec.rate_type or "") == rt),
         row("Payment delay", show(rec, "payment_delay_days", "{} days"), f"{terms.payment_delay_days} days",
             "payment_delay_days", rec.payment_delay_days == terms.payment_delay_days),
         row("Payment frequency", show(rec, "payment_frequency"), "12", "payment_frequency", rec.payment_frequency == 12),
         row("Day count", show(rec, "day_count"), "30/360", "day_count", (rec.day_count or "30/360") == "30/360"),
         row("Factor", show(rec, "factor", "{:.8f}"), f"{t.current_factor:.8f}", "current_factor",
-            rec.factor is not None and abs(rec.factor - t.current_factor) < 5e-7),
+            rec.factor is not None and abs(rec.factor - t.current_factor) < 5e-7,
+            f"{factor_obs.source} · factor" if factor_obs else None, cite_doc=factor_obs is None),
         row("Maturity", rec.maturity_date.isoformat(), terms.maturity_date.isoformat(), "maturity_date",
             rec.maturity_date == terms.maturity_date),
     ]
@@ -136,7 +143,8 @@ def build_mbs_finding(rec: SecurityRecord, positions: list[Position], terms_json
         Metric("Current factor", t.current_factor, "num4"),
         Metric("Current face", face, "usd"),
         Metric("Accrued per 100 (settlement)", t.accrued_per_100, "num4"),
-        Metric("Clean / full per 100", t.full_per_100, "num4"),
+        Metric("Clean price per 100", t.clean_per_100, "num4"),
+        Metric("Full price per 100", t.full_per_100, "num4"),
     ]
     return FindingDraft(rec.cusip, "agency_mbs", rec.description, as_of, usd, rr, headline, vendor_says, document_says,
                         treatment_txt, impact, comparison, pos, metrics, schedule=t.schedule,

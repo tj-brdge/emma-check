@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../api";
 import { RULE_LABEL, num, par, pct, ts, usd } from "../format";
-import type { Metric } from "../types";
+import type { CashReceipt, Metric } from "../types";
+import { AssetChip, Val } from "../components";
 import type { Extraction, FindingDetail, Flag, ReviewActionT } from "../types";
 import PageViewer from "./PageViewer";
 
@@ -47,6 +48,7 @@ export default function FindingDetailPage({ id }: { id: number }) {
   };
 
   if (!f) return <div className="muted">{err ?? "Loading…"}</div>;
+  const cashFlag = flags.find((x) => x.rule === "cash_reconciliation");
   const totalPar = f.positions.reduce((a, p) => a + p.par, 0);
   const cite = (page: number | null, excerpt: string | null, status?: string | null) =>
     page ? (
@@ -59,6 +61,7 @@ export default function FindingDetailPage({ id }: { id: number }) {
     <>
       <div className="bar">
         <a href="#/queue">← Queue</a>
+        <AssetChip c={f.asset_class} />
         <span className="mono b">{f.cusip}</span>
         <span>{f.description}</span>
         <span className={`badge ${f.status}`}>{f.status}</span>
@@ -88,16 +91,21 @@ export default function FindingDetailPage({ id }: { id: number }) {
       <div className="cols">
         <div>
           <div className="panel">
-            <h2>Vendor vs official statement</h2>
+            <h2>Book &amp; vendors vs offering document</h2>
             <table className="grid">
               <thead><tr><th>Field</th><th>Vendor</th><th>Document</th><th>Source</th><th>Excerpt</th></tr></thead>
               <tbody>
                 {f.comparison.map((r) => (
                   <tr key={r.field} className={r.match ? "" : "mismatch"}>
                     <td className="nowrap b">{r.field}</td>
-                    <td className="mono nowrap">{r.vendor}</td>
+                    <td className="mono nowrap">
+                      <Val v={r.vendor} />
+                      {r.other_sources && Object.entries(r.other_sources).map(([s, v]) => (
+                        <div key={s} className="locator">{s}: <Val v={v} /></div>
+                      ))}
+                    </td>
                     <td className="mono nowrap">{r.document}</td>
-                    <td className="nowrap">{cite(r.page, r.excerpt, r.citation_status)}</td>
+                    <td className="nowrap">{r.locator ? <span className="locator" title="pool disclosure">{r.locator}</span> : cite(r.page, r.excerpt, r.citation_status)}</td>
                     <td className="excerpt wrap">{r.excerpt ? `“${r.excerpt}”` : ""}</td>
                   </tr>
                 ))}
@@ -116,6 +124,8 @@ export default function FindingDetailPage({ id }: { id: number }) {
               ))}
             </div>
           </div>
+
+          {cashFlag && <CashPanel flag={cashFlag} />}
 
           <div className="panel">
             <h2>Positions</h2>
@@ -203,8 +213,8 @@ export default function FindingDetailPage({ id }: { id: number }) {
           <div className="panel">
             <h2>Finding</h2>
             <dl className="narr body" style={{ margin: 0 }}>
-              <dt>What the vendor data says</dt><dd>{f.narrative.vendor_says}</dd>
-              <dt>What the official statement says</dt><dd>{f.narrative.document_says}</dd>
+              <dt>What the book and vendor data say</dt><dd>{f.narrative.vendor_says}</dd>
+              <dt>What the offering document says</dt><dd>{f.narrative.document_says}</dd>
               <dt>Correct accounting treatment</dt><dd>{f.narrative.correct_treatment}</dd>
               <dt>Income impact</dt><dd className="b">{f.narrative.impact}</dd>
               {f.narrative.notes.length > 0 && (<><dt>Notes</dt><dd>{f.narrative.notes.join(" ")}</dd></>)}
@@ -259,4 +269,40 @@ function fmtMetric(m: Metric): string {
   if (m.fmt === "pct") return pct(m.value, 3);
   if (m.fmt === "usd") return usd(m.value);
   return num(m.value, m.fmt === "num2" ? 2 : 4);
+}
+
+function CashPanel({ flag }: { flag: Flag }) {
+  const c = flag.computed as {
+    receipts: CashReceipt[]; cash_total: number; booked_total: number; implied_rate: number | null;
+    book_rate: number | string | null; direction: string; assumptions: string[];
+  };
+  return (
+    <div className="panel">
+      <h2>
+        Cash reconciliation · interest received vs booked
+        <span className="spacer" />
+        <span className="chip sev-hi">confidence {(flag.confidence ?? 0).toFixed(2)}</span>
+      </h2>
+      <div className="metrics">
+        <div><div className="l">Interest cash</div><div className="v">{usd(c.cash_total)}</div></div>
+        <div><div className="l">Booked income</div><div className="v under">{usd(c.booked_total)}</div></div>
+        <div><div className="l">Cash-implied rate</div><div className="v">{pct(c.implied_rate, 3)}</div></div>
+        <div><div className="l">Book coupon</div><div className="v"><Val v={typeof c.book_rate === "number" ? pct(c.book_rate, 3) : c.book_rate} /></div></div>
+      </div>
+      <table className="grid">
+        <thead><tr><th>Received</th><th>Accrual period</th><th className="n">Face</th><th className="n">Cash</th><th className="n">Booked</th><th className="n">Implied rate</th><th>Booked basis</th></tr></thead>
+        <tbody>
+          {c.receipts.map((r) => (
+            <tr key={r.date + r.period_start}>
+              <td className="mono">{r.date}</td><td className="mono">{r.period_start.slice(0, 7)}</td>
+              <td className="n">{usd(r.face)}</td><td className="n">{num(r.cash, 2)}</td>
+              <td className="n">{num(r.booked, 2)}</td><td className="n">{pct(r.implied_rate, 3)}</td>
+              <td className="muted">{r.basis}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {c.assumptions.length > 0 && <div className="body muted">Assumptions: {c.assumptions.join("; ")}</div>}
+    </div>
+  );
 }

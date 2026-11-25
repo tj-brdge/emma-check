@@ -7,6 +7,7 @@ const KINDS: { kind: Batch["kind"]; label: string; hint: string }[] = [
   { kind: "holdings", label: "Holdings + primary vendor terms", hint: "CUSIP, description, par, price, convention, coupon, accrual type, maturity, issue date, rating, sector, state" },
   { kind: "vendor_secondary", label: "Second vendor file (optional)", hint: "Same columns without par; used for vendor-disagreement screen" },
   { kind: "price_history", label: "Price history (optional)", hint: "cusip, price_date, price, price_convention" },
+  { kind: "ledger", label: "Cash / income ledger (optional)", hint: "cusip, entry_date, cash, type (interest|principal)[, portfolio, booked_income]" },
 ];
 
 interface RowErr { row: number; column: string | null; message: string }
@@ -16,14 +17,16 @@ export default function Data() {
   const [runs, setRuns] = useState<ScreenRunT[]>([]);
   const [errors, setErrors] = useState<{ kind: string; msg: string; rows: RowErr[] } | null>(null);
   const [ok, setOk] = useState<string | null>(null);
-  const [form, setForm] = useState({ as_of: "2026-11-30", holdings: "", secondary: "", history: "", z: "3.0" });
+  const [form, setForm] = useState({ as_of: "2026-11-30", holdings: "", history: "", ledger: "", z: "3.0" });
+  const [vendorIds, setVendorIds] = useState<number[]>([]);
   const [running, setRunning] = useState(false);
 
   const load = () => {
     api.get<Batch[]>("/api/batches").then((b) => {
       setBatches(b);
       const first = (k: string) => String(b.find((x) => x.kind === k)?.id ?? "");
-      setForm((f) => ({ ...f, holdings: f.holdings || first("holdings"), secondary: f.secondary || first("vendor_secondary"), history: f.history || first("price_history") }));
+      setForm((f) => ({ ...f, holdings: f.holdings || first("holdings"), history: f.history || first("price_history"), ledger: f.ledger || first("ledger") }));
+      setVendorIds((v) => (v.length ? v : b.filter((x) => x.kind === "vendor_secondary").map((x) => x.id)));
     });
     api.get<ScreenRunT[]>("/api/screen-runs").then(setRuns);
   };
@@ -38,11 +41,28 @@ export default function Data() {
     try {
       const r = await api.post<{ batch: Batch; records: number; prices: number }>(`/api/uploads/${kind}`, fd);
       setOk(`${file.name}: batch #${r.batch.id}, ${r.batch.row_count} rows accepted.`);
-      setForm((f) => ({ ...f, [kind === "holdings" ? "holdings" : kind === "vendor_secondary" ? "secondary" : "history"]: String(r.batch.id) }));
+      if (kind === "vendor_secondary") setVendorIds((v) => [...v, r.batch.id]);
+      else setForm((f) => ({ ...f, [kind === "holdings" ? "holdings" : kind === "ledger" ? "ledger" : "history"]: String(r.batch.id) }));
       load();
     } catch (e) {
       const d = (e as ApiError).detail as { message?: string; errors?: RowErr[] } | string;
       setErrors({ kind, msg: typeof d === "string" ? d : d?.message ?? "rejected", rows: typeof d === "string" ? [] : d?.errors ?? [] });
+    }
+  };
+
+  const uploadDisclosure = async (file: File) => {
+    setErrors(null);
+    setOk(null);
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("cusip", "MULTIPLE");
+    fd.append("doc_kind", "pool_disclosure");
+    fd.append("asset_class", "agency_mbs");
+    try {
+      const d = await api.post<{ id: number }>("/api/documents", fd);
+      setOk(`${file.name}: pool disclosure registered as document #${d.id}. Screen runs use the latest disclosure per CUSIP.`);
+    } catch (e) {
+      setErrors({ kind: "pool disclosure", msg: (e as Error).message, rows: [] });
     }
   };
 
@@ -52,8 +72,9 @@ export default function Data() {
       const r = await api.post<ScreenRunT>("/api/screen-runs", {
         as_of: form.as_of,
         holdings_batch_id: Number(form.holdings),
-        secondary_batch_id: form.secondary ? Number(form.secondary) : null,
+        vendor_batch_ids: vendorIds,
         history_batch_id: form.history ? Number(form.history) : null,
+        ledger_batch_id: form.ledger ? Number(form.ledger) : null,
         config: { peer_z_threshold: Number(form.z) },
       });
       window.location.hash = `#/flags/${r.id}`;
@@ -93,15 +114,30 @@ export default function Data() {
               ))}
             </tbody>
           </table>
-          <div className="body muted">Coupons and yields in percent. A file with any invalid row is rejected whole; nothing is partially ingested.</div>
+          <div className="body muted">Coupons and yields in percent. Blank cells are kept as blank (never read as zero); a file with any invalid row is rejected whole. Optional columns: asset_class (muni | agency_mbs), product_type, factor, factor_date, payment_delay_days, rate_type.</div>
+          <div className="body" style={{ borderTop: "1px solid var(--line)" }}>
+            <span className="b">Pool disclosure file (agency MBS)</span> <span className="muted">monthly factor / net coupon per CUSIP; CSV or pipe-delimited</span>{" "}
+            <label className="btn">Choose file<input type="file" hidden onChange={(e) => { if (e.target.files?.[0]) uploadDisclosure(e.target.files[0]); e.target.value = ""; }} /></label>
+          </div>
         </div>
         <div className="panel">
           <h2>Run screens</h2>
           <div className="body" style={{ display: "grid", gridTemplateColumns: "140px 1fr", gap: 6, alignItems: "center" }}>
             <span>As-of date</span><input className="f" type="date" value={form.as_of} onChange={(e) => setForm({ ...form, as_of: e.target.value })} />
             <span>Holdings batch</span><select className="f" value={form.holdings} onChange={(e) => setForm({ ...form, holdings: e.target.value })}><option value="">—</option>{opts("holdings")}</select>
-            <span>Second vendor</span><select className="f" value={form.secondary} onChange={(e) => setForm({ ...form, secondary: e.target.value })}><option value="">none</option>{opts("vendor_secondary")}</select>
+            <span>Vendor files</span>
+            <div>
+              {batches.filter((b) => b.kind === "vendor_secondary").map((b) => (
+                <label key={b.id} style={{ display: "block" }}>
+                  <input type="checkbox" checked={vendorIds.includes(b.id)}
+                    onChange={(e) => setVendorIds(e.target.checked ? [...vendorIds, b.id] : vendorIds.filter((x) => x !== b.id))} />{" "}
+                  #{b.id} {b.vendor} · {b.filename}
+                </label>
+              ))}
+              {!batches.some((b) => b.kind === "vendor_secondary") && <span className="muted">none uploaded</span>}
+            </div>
             <span>Price history</span><select className="f" value={form.history} onChange={(e) => setForm({ ...form, history: e.target.value })}><option value="">none</option>{opts("price_history")}</select>
+            <span>Cash ledger</span><select className="f" value={form.ledger} onChange={(e) => setForm({ ...form, ledger: e.target.value })}><option value="">none</option>{opts("ledger")}</select>
             <span>Peer z-score</span><input className="f" type="number" step="0.5" value={form.z} onChange={(e) => setForm({ ...form, z: e.target.value })} />
             <span />
             <button className="btn primary" disabled={!form.holdings || running} onClick={runScreens}>{running ? "Running…" : "Run screens"}</button>

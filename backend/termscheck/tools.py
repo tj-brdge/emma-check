@@ -47,3 +47,33 @@ def compute_bond_treatment(interest_terms: dict[str, Any], vendor_price: float, 
         par, date.fromisoformat(as_of),
         window_start=date.fromisoformat(acquisition_date) if acquisition_date else None)
     return jsonable(asdict(t))
+
+
+def compute_mbs_treatment(interest_terms: dict[str, Any], book: dict[str, Any], original_face: float, as_of: str,
+                          observations: list[dict[str, Any]], ledger: list[dict[str, Any]] | None = None,
+                          portfolio: str = "DEFAULT", acquisition_date: str | None = None) -> dict[str, Any]:
+    """Agency MBS income treatment for one position.
+
+    interest_terms: the `interest_terms` from extract_official_statement_terms(..., asset_class="agency_mbs").
+    book: book-of-record fields {cusip, coupon (decimal or null = BLANK), factor, payment_delay_days, price,
+    price_convention}. observations: [{month: "YYYY-MM-01", factor, net_coupon (decimal or null)}].
+    ledger: [{date, cash, type: "interest"|"principal", booked_income?}].
+    """
+    from termscheck.core.records import BLANK, LedgerEntry, PeriodObservation, Position, SecurityRecord
+    from termscheck.plugins.agency_mbs.extraction.spec import terms_from_json
+    from termscheck.plugins.agency_mbs.treatment import compute_mbs_treatment as _compute
+    obs = [PeriodObservation(date.fromisoformat(o["month"]), o.get("factor"), o.get("net_coupon"), o.get("source"))
+           for o in observations]
+    terms = terms_from_json(interest_terms, obs)
+    cusip = book["cusip"]
+    rec = SecurityRecord(vendor="book", cusip=cusip, description="", price=book.get("price", 100.0),
+                         price_convention=book.get("price_convention", "clean"), coupon=book.get("coupon"),
+                         accrual_type=None, maturity_date=terms.maturity_date, issue_date=terms.issue_date, rating=None,
+                         sector=None, state=None, payment_frequency=12, asset_class="agency_mbs",
+                         factor=book.get("factor"), payment_delay_days=book.get("payment_delay_days"),
+                         source_role="book", states={"coupon": BLANK} if book.get("coupon") is None else {})
+    pos = Position(portfolio, cusip, original_face,
+                   date.fromisoformat(acquisition_date) if acquisition_date else None)
+    led = [LedgerEntry(portfolio, cusip, date.fromisoformat(e["date"]), e["cash"], e["type"], e.get("booked_income"))
+           for e in (ledger or [])]
+    return jsonable(asdict(_compute(terms, rec, pos, date.fromisoformat(as_of), led)))

@@ -2,6 +2,7 @@ import { Fragment, useEffect, useState } from "react";
 import { api } from "../api";
 import { RULE_LABEL, par, pct, usd } from "../format";
 import type { FlaggedCusip, ScreenRunT } from "../types";
+import { AssetChip, Val } from "../components";
 
 interface PipelineResult {
   extraction: { id: number; status: string; problems: string[] | null; error: string | null };
@@ -62,7 +63,7 @@ export default function Flags({ runId }: { runId?: number }) {
         <select className="f" value={run ?? ""} onChange={(e) => setRun(Number(e.target.value))}>
           {runs.map((r) => <option key={r.id} value={r.id}>Run #{r.id} · as of {r.as_of} · {r.flag_count} flags · {r.started_by}</option>)}
         </select>
-        <span className="muted">Upload the official statement for a flagged CUSIP to extract terms and build its finding.</span>
+        <span className="muted">Upload the offering document (muni official statement, MBS offering circular supplement) for a flagged CUSIP to extract terms and build its finding.</span>
       </div>
       {err && <div className="err">{err}</div>}
       {!runs.length && <div className="note">No screen runs yet. Upload holdings and run the screens on the Data &amp; runs tab.</div>}
@@ -70,7 +71,7 @@ export default function Flags({ runId }: { runId?: number }) {
         <table className="grid">
           <thead>
             <tr>
-              <th className="n">Sev</th><th>CUSIP</th><th>Description</th><th className="n">Par</th><th className="n">Price</th>
+              <th className="n">Sev</th><th>Class</th><th>CUSIP</th><th>Description</th><th className="n">Par</th><th className="n">Price</th>
               <th>Conv</th><th className="n">Cpn</th><th>Accrual</th><th className="n">Vnd yld</th><th>Rating</th><th>Screens</th>
               <th>Official statement / finding</th>
             </tr>
@@ -80,6 +81,7 @@ export default function Flags({ runId }: { runId?: number }) {
               <Fragment key={c.cusip}>
                 <tr className="click" onClick={() => setOpen(open === c.cusip ? null : c.cusip)}>
                   <td className="n b">{c.max_severity}</td>
+                  <td><AssetChip c={c.asset_class} /></td>
                   <td className="mono">{c.cusip}</td>
                   <td>{c.description}</td>
                   <td className="n">{par(c.par)}</td>
@@ -88,7 +90,7 @@ export default function Flags({ runId }: { runId?: number }) {
                   <td className="n">{c.coupon === null ? <span className="blank">BLANK</span> : (c.coupon * 100).toFixed(3)}</td>
                   <td>{c.accrual_type ?? <span className="blank">BLANK</span>}</td>
                   <td className="n">{pct(c.vendor_yield)}</td>
-                  <td>{c.rating}</td>
+                  <td><Val v={c.rating} /></td>
                   <td className="nowrap">
                     {c.flags.map((f) => <span key={f.rule} className={`chip ${f.severity >= 70 ? "sev-hi" : ""}`} title={f.message}>{RULE_LABEL[f.rule] ?? f.rule} {f.severity}</span>)}
                   </td>
@@ -101,19 +103,19 @@ export default function Flags({ runId }: { runId?: number }) {
                       <span className="muted">Extracting terms…</span>
                     ) : (
                       <label className="btn">
-                        {c.extraction_status === "failed" ? "Retry: upload OS" : "Upload OS (PDF)"}
+                        {c.extraction_status === "failed" ? "Retry: upload document" : c.asset_class === "agency_mbs" ? "Upload OC supplement (PDF)" : "Upload OS (PDF)"}
                         <input type="file" accept="application/pdf" hidden onChange={(e) => e.target.files?.[0] && analyse(c, e.target.files[0])} />
                       </label>
                     )}
                   </td>
                 </tr>
                 {msg?.cusip === c.cusip && (
-                  <tr key={c.cusip + "-msg"}><td colSpan={12}><div className={msg.bad ? "err" : "note"}>{msg.text}</div></td></tr>
+                  <tr key={c.cusip + "-msg"}><td colSpan={13}><div className={msg.bad ? "err" : "note"}>{msg.text}</div></td></tr>
                 )}
                 {open === c.cusip && (
                   <tr key={c.cusip + "-d"}>
                     <td />
-                    <td colSpan={11}>
+                    <td colSpan={12}>
                       {c.flags.map((f) => (
                         <div key={f.rule} style={{ marginBottom: 3 }}>
                           <span className="chip">{RULE_LABEL[f.rule] ?? f.rule} {f.severity}</span> {f.message}

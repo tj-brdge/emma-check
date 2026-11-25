@@ -26,6 +26,19 @@ export interface ComparisonRow {
   page: number | null;
   excerpt: string | null;
   citation_status: string | null;
+  locator?: string | null;
+  other_sources?: Record<string, string> | null;
+}
+
+export interface CashReceipt {
+  date: string;
+  cash: number;
+  booked: number;
+  basis: string;
+  period_start: string;
+  period_end: string;
+  face: number;
+  implied_rate: number | null;
 }
 
 export interface Metric {
@@ -101,6 +114,7 @@ export interface Extraction {
 export interface Flag {
   rule: string;
   severity: number;
+  confidence?: number;
   message: string;
   inputs?: Record<string, unknown>;
   computed?: Record<string, unknown>;
@@ -130,7 +144,7 @@ export interface FlaggedCusip {
 
 export interface Batch {
   id: number;
-  kind: "holdings" | "vendor_secondary" | "price_history";
+  kind: "holdings" | "vendor_secondary" | "price_history" | "ledger";
   vendor: string | null;
   filename: string;
   sha256: string;
