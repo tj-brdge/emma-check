@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="TERMSCHECK_", env_file=".env", extra="ignore")
 
     database_url: str = "postgresql+psycopg://termscheck:termscheck@localhost:5432/termscheck"
+    migration_database_url: str | None = None  # owner role for Alembic; defaults to database_url
     storage_dir: str = "storage"
     extraction_model: str = "claude-sonnet-5-5"
     extraction_max_tokens: int = 16000

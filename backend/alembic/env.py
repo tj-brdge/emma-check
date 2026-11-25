@@ -9,7 +9,7 @@ target_metadata = Base.metadata
 
 
 def url() -> str:
-    return context.config.attributes.get("url") or settings.database_url
+    return context.config.attributes.get("url") or settings.migration_database_url or settings.database_url
 
 
 def run_migrations_offline() -> None:

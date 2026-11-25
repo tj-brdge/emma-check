@@ -1,0 +1,38 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: termscheck
+      POSTGRES_PASSWORD: termscheck
+      POSTGRES_DB: termscheck
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./deploy/initdb.sql:/docker-entrypoint-initdb.d/01-roles.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U termscheck"]
+      interval: 2s
+      retries: 30
+
+  api:
+    build: { context: ., dockerfile: backend/Dockerfile }
+    environment:
+      TERMSCHECK_MIGRATION_DATABASE_URL: postgresql+psycopg://termscheck:termscheck@db:5432/termscheck
+      TERMSCHECK_DATABASE_URL: postgresql+psycopg://termscheck_app:termscheck_app@db:5432/termscheck
+      TERMSCHECK_EXTRACTION_MODEL: ${TERMSCHECK_EXTRACTION_MODEL:-claude-sonnet-5-5}
+      # "anthropic" calls the API (needs ANTHROPIC_API_KEY); "recorded" replays data/recorded_extractions
+      TERMSCHECK_LLM_MODE: ${TERMSCHECK_LLM_MODE:-anthropic}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    volumes:
+      - osstore:/app/storage
+    ports: ["8000:8000"]
+    depends_on:
+      db: { condition: service_healthy }
+
+  web:
+    build: { context: ./frontend }
+    ports: ["8080:80"]
+    depends_on: [api]
+
+volumes:
+  pgdata:
+  osstore:
