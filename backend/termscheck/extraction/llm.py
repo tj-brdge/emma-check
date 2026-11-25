@@ -34,10 +34,11 @@ class ExtractionLLM(Protocol):
 class AnthropicExtractionClient:
     """Structured-output extraction via the Anthropic Messages API (messages.parse)."""
 
-    def __init__(self, client: Any | None = None, *, server_fallback: bool = True):
+    def __init__(self, client: Any | None = None, *, server_fallback: bool = True, timeout: float = 240.0,
+                 max_retries: int = 2):
         if client is None:
             import anthropic
-            client = anthropic.Anthropic()
+            client = anthropic.Anthropic(timeout=timeout, max_retries=max_retries)
         self.client = client
         self.server_fallback = server_fallback
 

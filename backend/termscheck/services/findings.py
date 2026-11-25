@@ -22,7 +22,7 @@ def create_finding(session: Session, *, screen_run_id: int, extraction_id: int, 
     ex = session.get(Extraction, extraction_id)
     if run is None or ex is None:
         raise FindingError("screen run or extraction not found")
-    if ex.status == "failed" or not ex.interest_terms:
+    if ex.status in ("failed", "needs_ocr") or not ex.interest_terms:
         raise FindingError(f"extraction {ex.id} has no usable terms ({ex.status}): {ex.error or ex.problems}")
     vt = session.scalars(select(VendorTerms).where(VendorTerms.batch_id == run.holdings_batch_id,
                                                    VendorTerms.cusip == ex.cusip)).first()

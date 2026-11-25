@@ -132,3 +132,4 @@ textarea.f { width: 100%; min-height: 52px; resize: vertical; }
 .guide ol.read li { margin-bottom: 6px; }
 .guide code { font: 11px var(--mono); background: #f3f5f8; border: 1px solid var(--line); padding: 0 3px; }
 @media (max-width: 900px) { .guide .steps { grid-template-columns: 1fr; } .guide .steps > div { border-right: 0; border-bottom: 1px solid var(--line); } }
+.badge.needs_ocr { color: var(--under); border-color: #e0a39b; background: #fdeeec; }

@@ -6,7 +6,8 @@ from sqlalchemy.orm import Session
 
 from termscheck.db.models import UploadBatch
 from termscheck.services.ingestion import KINDS, IngestError, ingest_file, record_rejection
-from termscheck.api.deps import current_user, get_session
+from termscheck.api.deps import current_user, get_session, read_limited
+from termscheck.settings import settings
 
 router = APIRouter(prefix="/api", tags=["uploads"])
 
@@ -18,11 +19,12 @@ def batch_json(b: UploadBatch) -> dict:
 
 
 @router.post("/uploads/{kind}")
-async def upload(kind: str, file: UploadFile = File(...), vendor: str | None = Form(None),
-                 user: str = Depends(current_user), session: Session = Depends(get_session)):
+def upload(kind: str, file: UploadFile = File(...), vendor: str | None = Form(None),
+           user: str = Depends(current_user), session: Session = Depends(get_session)):
+    # sync def: FastAPI runs it in a worker thread, so parsing never blocks other requests
     if kind not in KINDS:
         raise HTTPException(404, f"unknown upload kind; expected one of {KINDS}")
-    raw = await file.read()
+    raw = read_limited(file, settings.max_data_bytes)
     try:
         text = raw.decode("utf-8-sig")
     except UnicodeDecodeError:

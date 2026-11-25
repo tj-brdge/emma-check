@@ -10,7 +10,8 @@ from termscheck.extraction.llm import ExtractionLLM
 from termscheck.extraction.sources import UploadSource
 from termscheck.services.extraction import register_document, run_extraction
 from termscheck.services.findings import FindingError, create_finding
-from termscheck.api.deps import current_user, get_llm, get_session, get_store
+from termscheck.api.deps import current_user, get_llm, get_session, get_store, read_limited
+from termscheck.settings import settings
 from termscheck.api.documents import doc_json, extraction_json
 from termscheck.api.findings import finding_json
 
@@ -66,13 +67,14 @@ def cusip_flags(cusip: str, run_id: int, session: Session = Depends(get_session)
 
 
 @router.post("/screen-runs/{run_id}/cusips/{cusip}/official-statement")
-async def analyse_official_statement(run_id: int, cusip: str, file: UploadFile = File(...),
+def analyse_official_statement(run_id: int, cusip: str, file: UploadFile = File(...),
                                      user: str = Depends(current_user), session: Session = Depends(get_session),
                                      store: UploadSource = Depends(get_store), llm: ExtractionLLM = Depends(get_llm)):
     """Upload the OS for a flagged CUSIP, extract terms, and build the finding in one step.
     Each step is persisted (and audited) on its own; a failed extraction is kept for review."""
     cusip = cusip.upper()
-    content = await file.read()
+    # sync def: the slow model call runs in a worker thread, not on the server's event loop
+    content = read_limited(file, settings.max_pdf_bytes)
     try:
         doc = register_document(session, store, cusip=cusip, filename=file.filename or "os.pdf",
                                 content=content, user=user)
@@ -83,7 +85,7 @@ async def analyse_official_statement(run_id: int, cusip: str, file: UploadFile =
     ex = run_extraction(session, document_id=doc.id, llm=llm, user=user, cusip=cusip)
     session.commit()
     out = {"document": doc_json(doc), "extraction": extraction_json(ex), "finding": None, "error": None}
-    if ex.status != "failed":
+    if ex.status not in ("failed", "needs_ocr"):
         try:
             f = create_finding(session, screen_run_id=run_id, extraction_id=ex.id, user=user)
             session.commit()

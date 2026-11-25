@@ -10,7 +10,8 @@ from termscheck.db.models import Document, Extraction
 from termscheck.extraction.llm import ExtractionLLM
 from termscheck.extraction.sources import UploadSource
 from termscheck.services.extraction import document_pages, register_document, run_extraction
-from termscheck.api.deps import current_user, get_llm, get_session, get_store
+from termscheck.api.deps import current_user, get_llm, get_session, get_store, read_limited
+from termscheck.settings import settings
 
 router = APIRouter(prefix="/api", tags=["documents"])
 
@@ -31,11 +32,11 @@ def extraction_json(e: Extraction) -> dict:
 
 
 @router.post("/documents")
-async def upload_document(cusip: str = Form(...), file: UploadFile = File(...),
+def upload_document(cusip: str = Form(...), file: UploadFile = File(...),
                           doc_kind: str | None = Form(None), asset_class: str | None = Form(None),
                           user: str = Depends(current_user), session: Session = Depends(get_session),
                           store: UploadSource = Depends(get_store)):
-    content = await file.read()
+    content = read_limited(file, max(settings.max_pdf_bytes, settings.max_data_bytes))
     try:
         doc = register_document(session, store, cusip=cusip.strip().upper(),
                                 filename=file.filename or "official_statement.pdf", content=content, user=user,

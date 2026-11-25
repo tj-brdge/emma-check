@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import io
+
+from pypdf import PdfReader
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -38,9 +41,9 @@ def register_document(session: Session, store: UploadSource, *, cusip: str, file
         if parsed.errors:
             raise ValueError(f"{doc_kind} rejected: " + "; ".join(parsed.errors[:20]))
         pages = [text]
-    ref = store.put(cusip, filename, content, data_file=is_data)
     if not is_data:
-        pages = extract_pages(content)
+        pages = readable_pages(content)       # validate before anything is stored
+    ref = store.put(cusip, filename, content, data_file=is_data)
     doc = Document(cusip=cusip.upper(), source=store.name, source_ref=ref.ref, filename=filename,
                    sha256=ref.ref, page_count=len(pages), storage_path=str(store.root / f"{ref.ref}.pdf"),
                    uploaded_by=user, asset_class=asset_class, doc_kind=doc_kind)
@@ -59,6 +62,29 @@ def register_document(session: Session, store: UploadSource, *, cusip: str, file
                     "observations": len(parsed.rows) if parsed else None,
                     "filename": filename, "sha256": doc.sha256, "pages": doc.page_count})
     return doc
+
+
+def readable_pages(content: bytes) -> list[str]:
+    """Parse a PDF into page text, or raise ValueError (-> HTTP 422) if it is unreadable or too long."""
+    if not content.startswith(b"%PDF"):
+        raise ValueError("document must be a PDF")
+    try:
+        n = len(PdfReader(io.BytesIO(content)).pages)
+        if n > settings.max_pdf_pages:
+            raise ValueError(f"PDF has {n} pages; the limit is {settings.max_pdf_pages}")
+        return extract_pages(content)
+    except ValueError:
+        raise
+    except Exception as e:                     # pypdf raises its own error types for damaged files
+        raise ValueError(f"PDF could not be read ({type(e).__name__}); it may be damaged or encrypted") from None
+
+
+def looks_scanned(pages: list[str]) -> bool:
+    """True when most pages have (almost) no text layer - an image-only / scanned PDF."""
+    if not pages:
+        return True
+    counts = sorted(len(p.strip()) for p in pages)
+    return counts[len(counts) // 2] < settings.ocr_min_chars_per_page
 
 
 def document_pages(session: Session, document_id: int) -> list[str]:
@@ -80,6 +106,15 @@ def run_extraction(session: Session, *, document_id: int, llm: ExtractionLLM, us
         raise ValueError(f"document {doc.id} is a {doc.doc_kind} data file; it is parsed on upload, not extracted")
     ex = Extraction(document_id=doc.id, cusip=cusip, model_requested=model, created_by=user,
                     prompt_version=plugin.extraction.prompt_version, status="failed", asset_class=plugin.key)
+    if looks_scanned(pages):
+        ex.status = "needs_ocr"
+        ex.error = ("The PDF has no usable text layer (scanned or image-only). Run it through OCR "
+                    "(e.g. ocrmypdf) and upload the OCR'd file; no model call was made.")
+        session.add(ex)
+        session.flush()
+        record(session, actor=user, event_type="extraction.needs_ocr", entity_type="extraction", entity_id=ex.id,
+               payload={"cusip": cusip, "document_id": doc.id, "pages": len(pages), "error": ex.error})
+        return ex
     try:
         res = extract_terms_from_pages(pages, cusip, llm, plugin.extraction, model=model,
                                        max_tokens=settings.extraction_max_tokens,

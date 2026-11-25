@@ -12,6 +12,20 @@ def current_user(x_user: str | None = Header(default=None)) -> str:
     return x_user.strip()[:128]
 
 
+def read_limited(upload, max_bytes: int) -> bytes:
+    """Read an uploaded file in chunks, refusing anything larger than ``max_bytes`` (HTTP 413)."""
+    chunks, total = [], 0
+    while True:
+        chunk = upload.file.read(1024 * 1024)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > max_bytes:
+            raise HTTPException(413, f"file exceeds the {max_bytes // (1024 * 1024)} MB upload limit")
+        chunks.append(chunk)
+    return b"".join(chunks)
+
+
 def get_store():
     from termscheck.extraction.sources import UploadSource
     from termscheck.settings import settings
