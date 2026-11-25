@@ -122,3 +122,13 @@ textarea.f { width: 100%; min-height: 52px; resize: vertical; }
 .chip.asset-agency_mbs { border-color: #9cb8dc; background: #eef4fb; color: #1d4f8c; }
 .chip.asset-muni { border-color: #c9c1e0; background: #f4f1fb; color: #4b3a86; }
 .locator { font: 10px var(--mono); color: var(--muted); }
+.guide p.lead { font-size: 13px; line-height: 1.5; max-width: 980px; margin: 0 0 10px; }
+.guide p { margin: 0 0 8px; line-height: 1.45; }
+.guide .steps { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border: 1px solid var(--line); }
+.guide .steps > div { padding: 8px 10px; border-right: 1px solid var(--line); line-height: 1.4; }
+.guide .steps > div:last-child { border-right: 0; }
+.guide .steps .num { display: inline-block; width: 18px; height: 18px; line-height: 18px; text-align: center; background: var(--head); color: #fff; font: 600 11px var(--mono); margin-right: 6px; }
+.guide ol.read { margin: 0; padding-left: 18px; line-height: 1.45; }
+.guide ol.read li { margin-bottom: 6px; }
+.guide code { font: 11px var(--mono); background: #f3f5f8; border: 1px solid var(--line); padding: 0 3px; }
+@media (max-width: 900px) { .guide .steps { grid-template-columns: 1fr; } .guide .steps > div { border-right: 0; border-bottom: 1px solid var(--line); } }
