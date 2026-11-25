@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Load the synthetic muni + agency MBS universe through the HTTP API (as a user would) and
 analyse the sample offering documents.
 

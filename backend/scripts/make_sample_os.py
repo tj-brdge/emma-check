@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Build synthetic official statements (fictional issuers) for planted defects D01 and D12.
 
 These PDFs exist to exercise the extraction pipeline: realistic structure (cover, maturity

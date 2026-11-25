@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Write the synthetic dataset to data/synthetic/ (CSV inputs + planted-defect manifest)."""
 from __future__ import annotations
 
