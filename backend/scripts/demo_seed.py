@@ -1,5 +1,9 @@
 """Load the synthetic muni + agency MBS universe through the HTTP API (as a user would) and
-analyse the sample offering documents. Usage: python scripts/demo_seed.py [--api URL] [--user NAME]"""
+analyse the sample offering documents.
+
+Usage: python backend/scripts/demo_seed.py [--api URL] [--user NAME]
+Default --api is the docker compose stack (http://localhost:18080); for a local uvicorn use
+--api http://localhost:8000."""
 from __future__ import annotations
 
 import argparse
@@ -13,10 +17,18 @@ DATA = Path(__file__).resolve().parents[2] / "data"
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--api", default="http://localhost:8000")
+    ap.add_argument("--api", default="http://localhost:18080")
     ap.add_argument("--user", default="demo.loader")
     a = ap.parse_args()
     c = httpx.Client(base_url=a.api, headers={"X-User": a.user}, timeout=900)
+    try:
+        c.get("/api/health").raise_for_status()
+    except httpx.HTTPError as e:
+        raise SystemExit(
+            f"Terms Check is not reachable at {a.api} ({e.__class__.__name__}).\n"
+            "Start it first:  TERMSCHECK_LLM_MODE=recorded docker compose up --build\n"
+            "wait until the 'api' service logs 'Uvicorn running', then re-run this script.\n"
+            "If the API runs elsewhere, pass --api, e.g. --api http://localhost:8000") from None
     syn = DATA / "synthetic"
 
     def call(resp):
