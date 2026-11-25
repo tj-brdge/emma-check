@@ -24,13 +24,13 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
     volumes:
       - osstore:/app/storage
-    ports: ["18000:8000"]   # API (host port chosen to avoid common conflicts)
+    ports: ["127.0.0.1:18000:8000"]   # API: this machine only (no authentication - see README)
     depends_on:
       db: { condition: service_healthy }
 
   web:
     build: { context: ./frontend }
-    ports: ["18080:80"]     # UI
+    ports: ["127.0.0.1:18080:80"]     # UI: this machine only
     depends_on: [api]
 
 volumes:

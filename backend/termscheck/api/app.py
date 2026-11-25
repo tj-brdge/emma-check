@@ -16,11 +16,17 @@ def create_app() -> FastAPI:
         app.include_router(r)
 
     @app.exception_handler(Exception)
-    async def unhandled(request, exc):   # always answer JSON, never a bare text 500
+    async def unhandled(request, exc):
+        """Always answer JSON, never leak internals: details go to the server log under an error id."""
         import logging
-        logging.getLogger("termscheck").exception("unhandled error on %s", request.url.path)
+        import uuid
+
         from fastapi.responses import JSONResponse
-        return JSONResponse(status_code=500, content={"detail": f"internal error: {type(exc).__name__}: {exc}"})
+        error_id = uuid.uuid4().hex[:12]
+        logging.getLogger("termscheck").exception("unhandled error %s on %s %s", error_id, request.method,
+                                                  request.url.path)
+        return JSONResponse(status_code=500, content={
+            "detail": f"Internal error (id {error_id}). The details are in the server log.", "error_id": error_id})
 
     @app.get("/api/health")
     def health():

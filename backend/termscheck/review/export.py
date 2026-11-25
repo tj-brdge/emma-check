@@ -18,10 +18,27 @@ COLUMNS = [
 ]
 
 
+# Columns that can hold free text from outside the app (vendor files, reviewers, documents).
+TEXT_COLUMNS = {"description", "portfolio", "vendor_accrual_type", "vendor_price_convention",
+                "document_interest_type", "document_day_count", "citations", "approved_by", "approval_comment",
+                "finding_headline", "cusip", "asset_class"}
+FORMULA_LEADS = ("=", "+", "-", "@", "\t", "\r", "\n")
+
+
+def safe_cell(column: str, value: Any) -> Any:
+    """Neutralise spreadsheet formula injection in text columns (prefix with an apostrophe).
+    Numeric columns are left alone so legitimate negatives such as -38179.00 stay numbers."""
+    if value is None:
+        return ""
+    if column in TEXT_COLUMNS and isinstance(value, str) and value.startswith(FORMULA_LEADS):
+        return "'" + value
+    return value
+
+
 def rows_to_csv(rows: list[dict[str, Any]]) -> str:
     buf = io.StringIO()
     w = csv.DictWriter(buf, fieldnames=COLUMNS, extrasaction="ignore")
     w.writeheader()
     for r in rows:
-        w.writerow({k: ("" if r.get(k) is None else r.get(k)) for k in COLUMNS})
+        w.writerow({k: safe_cell(k, r.get(k)) for k in COLUMNS})
     return buf.getvalue()
