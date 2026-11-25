@@ -5,6 +5,8 @@ from datetime import date
 from typing import Any
 
 from termscheck.core.plugin import register
+from termscheck.core.records import CashPeriod
+from termscheck.core.schedules import add_months
 from termscheck.plugins.muni.bondmath import DayCount, InterestTerms, InterestType
 from termscheck.plugins.muni.extraction.spec import MUNI_SPEC
 from termscheck.plugins.muni.findings import build_finding
@@ -19,6 +21,23 @@ class MuniPlugin:
     label = "Municipal bonds"
     screens = (YieldCouponScreen(), PriceDriftScreen(), PeerOutlierScreen(), ZeroCouponScreen())
     extraction = MUNI_SPEC
+
+    def cash_period(self, rec, pos, entry, data) -> CashPeriod:
+        """A muni coupon receipt pays the coupon period ending on (or just before) the receipt."""
+        assumptions = []
+        freq = rec.payment_frequency
+        if not freq:
+            assumptions.append("payment frequency not usable from book terms; semiannual assumed")
+            freq = 2
+        step = 12 // freq
+        anchor = rec.maturity_date
+        k = 0
+        while add_months(anchor, -step * k) > entry.entry_date:
+            k += 1
+        end = add_months(anchor, -step * k)
+        if (entry.entry_date - end).days > 20:
+            assumptions.append("receipt not on a scheduled coupon date; nearest prior coupon date used")
+        return CashPeriod(add_months(end, -step), end, pos.par, 1.0 / freq, tuple(assumptions))
 
     def prepare_context(self, data, ctx) -> None:
         """Vendor-terms implied yields, shared by the yield, drift and peer screens."""

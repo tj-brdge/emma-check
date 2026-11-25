@@ -7,9 +7,13 @@ from termscheck.core.plugin import all_plugins
 from termscheck.core.records import ScreenInput, ScreenResult
 from termscheck.screens.base import Screen, ScreenContext
 from termscheck.screens.config import ScreenConfig
+from termscheck.screens.cash_reconciliation import CashReconciliationScreen
+from termscheck.screens.frequency_contradiction import FrequencyContradictionScreen
+from termscheck.screens.null_vs_zero import NullVsZeroScreen
 from termscheck.screens.vendor_disagreement import VendorDisagreementScreen
 
-SHARED_SCREENS: tuple[Screen, ...] = (VendorDisagreementScreen(),)
+SHARED_SCREENS: tuple[Screen, ...] = (CashReconciliationScreen(), NullVsZeroScreen(),
+                                      FrequencyContradictionScreen(), VendorDisagreementScreen())
 
 
 def run_screens(data: ScreenInput, config: ScreenConfig | None = None) -> ScreenResult:

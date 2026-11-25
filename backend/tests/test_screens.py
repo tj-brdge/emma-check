@@ -10,8 +10,9 @@ from termscheck.plugins.muni.screens.price_drift import linear_fit
 from termscheck.plugins.muni.synthetic import generate, to_screen_input
 
 AS_OF = date(2026, 11, 30)
-ALL_RULES = {"yield_coupon_impossibility", "price_drift", "peer_outlier", "vendor_disagreement",
-             "zero_coupon_sanity"}
+MUNI_RULES = {"yield_coupon_impossibility", "price_drift", "peer_outlier", "vendor_disagreement",
+              "zero_coupon_sanity"}
+ALL_RULES = MUNI_RULES | {"null_vs_zero", "frequency_contradiction", "cash_reconciliation"}
 
 
 # ---------------------------------------------------------------- synthetic dataset
@@ -20,7 +21,7 @@ def test_dataset_shape(dataset):
     assert len({h.vendor_a.cusip for h in dataset.holdings}) == len(dataset.holdings)
     assert len(dataset.defects) >= 10
     covered = {r for d in dataset.defects for r in d.expected_rules}
-    assert covered == ALL_RULES, "every screen must have at least one planted defect"
+    assert covered == MUNI_RULES, "every muni screen must have at least one planted defect"
     assert not any(h.vendor_a.cusip.startswith("34077") for h in dataset.holdings)
 
 

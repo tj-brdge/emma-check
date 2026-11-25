@@ -28,5 +28,13 @@ class ScreenConfig:
     zero_near_par_price: float = 95.0
     zero_min_years: float = 3.0
 
+    # null vs zero / frequency contradiction
+    blank_alone_severity: int = 30           # blank in one source with no zero anywhere
+    # cash reconciliation
+    cash_shortfall_pct: float = 0.10         # booked income below cash by more than this share
+    cash_rate_gap_bp: float = 25.0           # ...and the implied rate differs by more than this
+    cash_overbooked_pct: float = 0.10        # booked income above cash (over-accrual)
+    cash_lookback_days: int = 400
+
     def as_dict(self) -> dict:
         return {"version": SCREEN_CONFIG_VERSION, **asdict(self)}

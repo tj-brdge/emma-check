@@ -87,6 +87,16 @@ class LedgerEntry:
     booked_income: float | None = None  # optional fund-accounting booked income for the period
 
 
+@dataclass(frozen=True)
+class CashPeriod:
+    """The accrual period a cash receipt pays, as determined by the security's plugin."""
+    start: date
+    end: date
+    face: float                      # face outstanding during the period (currency)
+    years: float                     # accrual period length in years on the security's basis
+    assumptions: tuple[str, ...] = ()
+
+
 @dataclass
 class ScreenInput:
     as_of: date

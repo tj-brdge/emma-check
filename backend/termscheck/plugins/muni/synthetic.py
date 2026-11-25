@@ -162,7 +162,8 @@ def _clean_holding(g: _Gen, portfolio: str) -> SyntheticHolding:
     desc = _desc(g, sector, coupon, maturity, "Cap Apprec " if is_cab else "")
     vy = None if r.random() < 0.1 else y
     state = r.choice(STATES)
-    a = _record("VendorA", cusip, desc, price, coupon, accrual, terms, rating, sector, state, vy)
+    a = _record("VendorA", cusip, desc, price, coupon, accrual, terms, rating, sector, state, vy,
+                freq=0 if is_cab else 2)
     b = None
     if r.random() < 0.95:
         b = replace(a, vendor="VendorB", price=round(price + r.uniform(-0.4, 0.4), 3),
