@@ -4,12 +4,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from termscheck.audit import record
-from termscheck.plugins.muni.bondmath import BONDMATH_VERSION
-from termscheck.db.models import Computation, Extraction, Finding, Holding, ScreenFlag, ScreenRun, VendorTerms
+from termscheck.db.models import LedgerRow, Computation, Extraction, Finding, Holding, ScreenFlag, ScreenRun, VendorTerms
 from termscheck.core.plugin import get_plugin
+from termscheck.core.records import LedgerEntry
 from termscheck.screens import Position
 from termscheck.services.extraction import citation_index
-from termscheck.services.screening import to_record
+from termscheck.services.screening import latest_disclosures, to_record
 from termscheck.services.serialize import jsonable
 
 
@@ -37,7 +37,10 @@ def create_finding(session: Session, *, screen_run_id: int, extraction_id: int, 
     cites = citation_index(ex)
     draft = plugin.build_finding(to_record(vt), [Position(h.portfolio, h.cusip, h.par, h.acquisition_date)
                                                  for h in holdings], terms, run.as_of, citations=cites, rules=rules,
-                                 ledger=ledger_for(session, run, ex.cusip), context={"session": session, "run": run})
+                                 ledger=ledger_for(session, run, ex.cusip),
+                                 context={"observations": latest_disclosures(session, {ex.cusip}, run.as_of)[0]
+                                          .get(ex.cusip, []),
+                                          "sources": sources_for(session, run, ex.cusip)})
     finding = Finding(
         cusip=ex.cusip, asset_class=ex.asset_class, description=vt.description, as_of=run.as_of, screen_run_id=run.id,
         extraction_id=ex.id, income_impact_usd=round(draft.income_impact_usd, 2),
@@ -59,7 +62,7 @@ def create_finding(session: Session, *, screen_run_id: int, extraction_id: int, 
                 "price": vt.price, "price_convention": vt.price_convention, "coupon": vt.coupon,
                 "accrual_type": vt.accrual_type}, "par": h.par, "acquisition_date": h.acquisition_date}),
             outputs=pi.outputs,
-            bondmath_version=BONDMATH_VERSION))
+            bondmath_version=plugin.math_version))
     session.add_all(comps)
     session.flush()
     for c in comps:
@@ -74,6 +77,22 @@ def create_finding(session: Session, *, screen_run_id: int, extraction_id: int, 
     return finding
 
 
-def ledger_for(session: Session, run: ScreenRun, cusip: str) -> list:
-    """Cash ledger entries for the CUSIP from the run's ledger batch (none until ledgers exist)."""
-    return []
+def ledger_for(session: Session, run: ScreenRun, cusip: str) -> list[LedgerEntry]:
+    """Cash ledger entries for the CUSIP from the run's ledger batch."""
+    if run.ledger_batch_id is None:
+        return []
+    return [LedgerEntry(r.portfolio, r.cusip, r.entry_date, r.cash, r.kind, r.booked_income)
+            for r in session.scalars(select(LedgerRow).where(LedgerRow.batch_id == run.ledger_batch_id,
+                                                             LedgerRow.cusip == cusip).order_by(LedgerRow.id))]
+
+
+def sources_for(session: Session, run: ScreenRun, cusip: str) -> list:
+    """Book record plus every vendor record for the CUSIP that the run screened."""
+    out = []
+    for bid in [run.holdings_batch_id, run.secondary_batch_id, *(run.vendor_batch_ids or [])]:
+        if bid is None:
+            continue
+        v = session.scalars(select(VendorTerms).where(VendorTerms.batch_id == bid, VendorTerms.cusip == cusip)).first()
+        if v is not None:
+            out.append(to_record(v))
+    return out

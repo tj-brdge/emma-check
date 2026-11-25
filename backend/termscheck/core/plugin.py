@@ -19,6 +19,7 @@ from termscheck.extraction.spec import ExtractionSpec
 class AssetClassPlugin(Protocol):
     key: str
     label: str
+    math_version: str                        # recorded on every computation
     screens: tuple[Any, ...]                 # plugin-specific Screen objects
     extraction: ExtractionSpec
 

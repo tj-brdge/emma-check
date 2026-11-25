@@ -9,6 +9,9 @@ from termscheck.core.records import CashPeriod
 from termscheck.core.plugin import register
 from termscheck.plugins.agency_mbs.bondmath import accrual_month_paid_on
 from termscheck.plugins.agency_mbs.disclosure import parse_pool_disclosure
+from termscheck.plugins.agency_mbs.extraction.spec import MBS_SPEC, terms_from_json
+from termscheck.plugins.agency_mbs.findings import build_mbs_finding
+from termscheck.plugins.agency_mbs.screens import FactorMismatchScreen, RateVsDisclosureScreen
 
 # Common stated delays by the day of month the payment lands on (used only when the delay is
 # not supplied by any source, and always reported as an assumption).
@@ -27,8 +30,23 @@ def infer_delay(rec, pay_day: int) -> tuple[int, str | None]:
 class AgencyMBSPlugin:
     key = "agency_mbs"
     label = "Agency MBS"
-    screens: tuple = ()
+    from termscheck.plugins.agency_mbs.treatment import TREATMENT_VERSION as math_version
+    screens = (FactorMismatchScreen(), RateVsDisclosureScreen())
+    extraction = MBS_SPEC
     data_document_kinds = ("pool_disclosure",)
+
+    def terms_to_json(self, terms: dict) -> dict:
+        return dict(terms)
+
+    def terms_from_json(self, data: dict) -> dict:
+        terms_from_json(data)        # validate
+        return dict(data)
+
+    def build_finding(self, record, positions, terms, as_of, *, citations=None, rules=None, ledger=None,
+                      context=None):
+        ctx = context or {}
+        return build_mbs_finding(record, positions, terms, as_of, citations=citations, rules=rules, ledger=ledger,
+                                 observations=ctx.get("observations"), sources=ctx.get("sources"))
 
     def parse_data_document(self, kind: str, filename: str, text: str):
         if kind != "pool_disclosure":

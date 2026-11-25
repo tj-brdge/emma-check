@@ -19,6 +19,7 @@ from termscheck.plugins.muni.screens.zero_coupon import ZeroCouponScreen
 class MuniPlugin:
     key = "muni"
     label = "Municipal bonds"
+    from termscheck.plugins.muni.bondmath import BONDMATH_VERSION as math_version
     screens = (YieldCouponScreen(), PriceDriftScreen(), PeerOutlierScreen(), ZeroCouponScreen())
     extraction = MUNI_SPEC
 
