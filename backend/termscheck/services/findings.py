@@ -3,14 +3,14 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..audit import record
-from ..bondmath import BONDMATH_VERSION
-from ..db.models import Computation, Extraction, Finding, Holding, ScreenFlag, ScreenRun, VendorTerms
-from ..findings import build_finding
-from ..screens import Position
-from .extraction import citation_index
-from .screening import to_record
-from .serialize import jsonable, terms_from_dict
+from termscheck.audit import record
+from termscheck.plugins.muni.bondmath import BONDMATH_VERSION
+from termscheck.db.models import Computation, Extraction, Finding, Holding, ScreenFlag, ScreenRun, VendorTerms
+from termscheck.core.plugin import get_plugin
+from termscheck.screens import Position
+from termscheck.services.extraction import citation_index
+from termscheck.services.screening import to_record
+from termscheck.services.serialize import jsonable
 
 
 class FindingError(ValueError):
@@ -32,34 +32,33 @@ def create_finding(session: Session, *, screen_run_id: int, extraction_id: int, 
         raise FindingError(f"{ex.cusip} is not held in screen run {run.id}")
     rules = sorted({f.rule for f in session.scalars(
         select(ScreenFlag).where(ScreenFlag.run_id == run.id, ScreenFlag.cusip == ex.cusip))})
-    terms = terms_from_dict(ex.interest_terms)
+    plugin = get_plugin(ex.asset_class)
+    terms = plugin.terms_from_json(ex.interest_terms)
     cites = citation_index(ex)
-    draft = build_finding(to_record(vt), [Position(h.portfolio, h.cusip, h.par, h.acquisition_date)
-                                          for h in holdings], terms, run.as_of, citations=cites, rules=rules)
+    draft = plugin.build_finding(to_record(vt), [Position(h.portfolio, h.cusip, h.par, h.acquisition_date)
+                                                 for h in holdings], terms, run.as_of, citations=cites, rules=rules,
+                                 ledger=ledger_for(session, run, ex.cusip), context={"session": session, "run": run})
     finding = Finding(
-        cusip=ex.cusip, description=vt.description, as_of=run.as_of, screen_run_id=run.id,
+        cusip=ex.cusip, asset_class=ex.asset_class, description=vt.description, as_of=run.as_of, screen_run_id=run.id,
         extraction_id=ex.id, income_impact_usd=round(draft.income_impact_usd, 2),
         run_rate_gap_usd=round(draft.run_rate_gap_usd, 2), headline=draft.headline,
         narrative={"vendor_says": draft.vendor_says, "document_says": draft.document_says,
                    "correct_treatment": draft.correct_treatment, "impact": draft.impact,
                    "extraction_status": ex.status, "extraction_problems": ex.problems or [],
-                   "per_100": jsonable({k: getattr(draft.treatment, k) for k in (
-                       "accreted_value", "true_accrued", "vendor_accrued", "full_value", "correct_clean",
-                       "correct_dirty", "vendor_clean", "yield_document_terms", "yield_vendor_terms",
-                       "unbooked_per_100", "income_next_12m_document", "income_next_12m_vendor")}),
-                   "schedule": jsonable(draft.treatment.schedule),
-                   "notes": draft.treatment.notes},
+                   "metrics": jsonable(draft.metrics),
+                   "schedule": jsonable(draft.schedule), "schedule_label": draft.schedule_label,
+                   "notes": draft.notes},
         comparison=draft.comparison, rules=rules, status="open", created_by=user)
     session.add(finding)
     session.flush()
     comps = []
-    for h, pi in zip(holdings, draft.positions):
+    for h, pi in zip(holdings, draft.positions):  # plugin returns positions in input order
         comps.append(Computation(
             finding_id=finding.id, extraction_id=ex.id, holding_id=h.id, as_of=run.as_of,
             inputs=jsonable({"terms": ex.interest_terms, "vendor": {
                 "price": vt.price, "price_convention": vt.price_convention, "coupon": vt.coupon,
                 "accrual_type": vt.accrual_type}, "par": h.par, "acquisition_date": h.acquisition_date}),
-            outputs=jsonable({k: v for k, v in vars(pi.treatment).items() if k != "schedule"}),
+            outputs=pi.outputs,
             bondmath_version=BONDMATH_VERSION))
     session.add_all(comps)
     session.flush()
@@ -73,3 +72,8 @@ def create_finding(session: Session, *, screen_run_id: int, extraction_id: int, 
                     "income_impact_usd": finding.income_impact_usd, "run_rate_gap_usd": finding.run_rate_gap_usd,
                     "headline": finding.headline, "rules": rules, "computation_ids": [c.id for c in comps]})
     return finding
+
+
+def ledger_for(session: Session, run: ScreenRun, cusip: str) -> list:
+    """Cash ledger entries for the CUSIP from the run's ledger batch (none until ledgers exist)."""
+    return []

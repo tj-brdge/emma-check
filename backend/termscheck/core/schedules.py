@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from .daycount import add_months
+from termscheck.core.daycount import add_months
 
 
 def regular_schedule(start: date, end: date, frequency: int, first: date | None = None) -> list[date]:

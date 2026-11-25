@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from ..settings import settings
+from termscheck.settings import settings
 
 _engine = None
 _Session: sessionmaker | None = None

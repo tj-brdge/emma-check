@@ -4,8 +4,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
-from .config import ScreenConfig
-from .models import Flag, ScreenInput
+from termscheck.screens.config import ScreenConfig
+from termscheck.core.records import Flag, ScreenInput
 
 
 @dataclass

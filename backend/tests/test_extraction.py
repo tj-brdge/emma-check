@@ -11,13 +11,15 @@ from pathlib import Path
 import httpx2
 import pytest
 
-from termscheck.bondmath import InterestType
+from termscheck.plugins.muni.bondmath import InterestType
 from termscheck.extraction import (AnthropicExtractionClient, ExtractionLLMError, RecordedExtractionClient,
                                    extract_terms)
 from termscheck.extraction.citations import normalise
 from termscheck.extraction.pdf import extract_pages, select_pages
-from termscheck.extraction.schema import CITED_FIELDS
-from termscheck.extraction.sources import DocumentSource, EmmaSource, UploadSource
+from termscheck.plugins.muni.extraction.schema import CITED_FIELDS, ExtractedTerms
+from termscheck.extraction.sources import DocumentSource, UploadSource
+from termscheck.plugins.muni.extraction.spec import MUNI_SPEC
+from termscheck.plugins.muni.sources import EmmaSource
 
 ROOT = Path(__file__).resolve().parents[2]
 FIX = Path(__file__).parent / "fixtures"
@@ -40,7 +42,7 @@ def os_files(dataset):
 
 def run(os_files, p, recorded=None):
     d, pdf, rec = os_files[p]
-    return extract_terms(pdf, d.cusip, RecordedExtractionClient(recorded or rec), model="test-model")
+    return extract_terms(pdf, d.cusip, RecordedExtractionClient(recorded or rec), MUNI_SPEC, model="test-model")
 
 
 @pytest.mark.parametrize("p", ["D01", "D12"])
@@ -72,7 +74,7 @@ def test_extracted_terms_match_planted_ground_truth(os_files, p):
 def test_motivating_pattern_derived_from_document(os_files, dataset):
     """Zero vendor coupon + 'clean' price; the document says deferred interest at 11% paid at
     maturity. Nothing about the bond is hard-coded: terms come only from the PDF."""
-    from termscheck.findings import build_finding
+    from termscheck.plugins.muni.findings import build_finding
     d = os_files["D01"][0]
     r = run(os_files, "D01")
     assert r.interest_terms.interest_type is InterestType.DEFERRED_INTEREST
@@ -130,7 +132,7 @@ def test_whitespace_and_hyphenation_tolerated():
 def test_prompt_contains_pages_and_target_but_no_vendor_data(os_files, dataset):
     d, pdf, rec = os_files["D01"]
     client = RecordedExtractionClient(rec)
-    extract_terms(pdf, d.cusip, client, model="m")
+    extract_terms(pdf, d.cusip, client, MUNI_SPEC, model="m")
     msg = client.calls[0]["user"]
     assert f"Target CUSIP: {d.cusip}" in msg and '<page number="6">' in msg
     h = next(h for h in dataset.holdings if h.vendor_a.cusip == d.cusip)
@@ -184,7 +186,7 @@ def test_anthropic_client_structured_output_round_trip(os_files):
         return httpx2.Response(200, json=_message(json.dumps(rec)))
 
     llm = AnthropicExtractionClient(_mock_client(handler))
-    r = extract_terms(pdf, d.cusip, llm, model="claude-sonnet-5-5")
+    r = extract_terms(pdf, d.cusip, llm, MUNI_SPEC, model="claude-sonnet-5-5")
     assert r.status == "ok" and r.model == "claude-sonnet-5-5"
     body = seen["body"]
     assert body["model"] == "claude-sonnet-5-5" and body["fallbacks"] == "default"
@@ -198,7 +200,7 @@ def test_anthropic_client_refusal_and_truncation():
     for stop in ("refusal", "max_tokens"):
         llm = AnthropicExtractionClient(_mock_client(lambda req, s=stop: httpx2.Response(200, json=_message("{}", s))))
         with pytest.raises(ExtractionLLMError):
-            llm.extract(system="s", user="u", model="claude-sonnet-5-5", max_tokens=10)
+            llm.extract(system="s", user="u", model="claude-sonnet-5-5", max_tokens=10, schema=ExtractedTerms)
 
 
 def test_default_model_is_configurable():
@@ -214,7 +216,7 @@ def test_default_model_is_configurable():
 def test_live_extraction(os_files, p):
     from termscheck.settings import settings
     d, pdf, _ = os_files[p]
-    r = extract_terms(pdf, d.cusip, AnthropicExtractionClient(), model=settings.extraction_model)
+    r = extract_terms(pdf, d.cusip, AnthropicExtractionClient(), MUNI_SPEC, model=settings.extraction_model)
     for c in r.checks:
         if c.status != "absent":
             assert c.page is not None and c.ok, (c.field, c.status)

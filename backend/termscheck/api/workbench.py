@@ -5,14 +5,14 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..db.models import (Document, Extraction, Finding, Holding, ScreenFlag, ScreenRun, VendorTerms)
-from ..extraction.llm import ExtractionLLM
-from ..extraction.sources import UploadSource
-from ..services.extraction import register_document, run_extraction
-from ..services.findings import FindingError, create_finding
-from .deps import current_user, get_llm, get_session, get_store
-from .documents import doc_json, extraction_json
-from .findings import finding_json
+from termscheck.db.models import (Document, Extraction, Finding, Holding, ScreenFlag, ScreenRun, VendorTerms)
+from termscheck.extraction.llm import ExtractionLLM
+from termscheck.extraction.sources import UploadSource
+from termscheck.services.extraction import register_document, run_extraction
+from termscheck.services.findings import FindingError, create_finding
+from termscheck.api.deps import current_user, get_llm, get_session, get_store
+from termscheck.api.documents import doc_json, extraction_json
+from termscheck.api.findings import finding_json
 
 router = APIRouter(prefix="/api", tags=["workbench"])
 

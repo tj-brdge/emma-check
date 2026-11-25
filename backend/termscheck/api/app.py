@@ -3,8 +3,8 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from ..settings import settings
-from . import audit, documents, findings, review, screens, uploads, workbench
+from termscheck.settings import settings
+from termscheck.api import audit, documents, findings, review, screens, uploads, workbench
 
 
 def create_app() -> FastAPI:

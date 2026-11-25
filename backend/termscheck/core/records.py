@@ -25,6 +25,7 @@ class SecurityRecord:
     payment_frequency: int | None = None
     day_count: str | None = None
     vendor_yield: float | None = None  # annual decimal
+    asset_class: str = "muni"
 
 
 @dataclass(frozen=True)
@@ -41,6 +42,16 @@ class PricePoint:
     price_date: date
     price: float
     convention: str = "clean"
+
+
+@dataclass(frozen=True)
+class LedgerEntry:
+    portfolio: str
+    cusip: str
+    entry_date: date
+    cash: float                       # currency amount received
+    kind: str                         # "interest" | "principal"
+    booked_income: float | None = None  # optional fund-accounting booked income for the period
 
 
 @dataclass

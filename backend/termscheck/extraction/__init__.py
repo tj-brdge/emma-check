@@ -1,9 +1,8 @@
-"""Official-statement term extraction. Independent of the database; callable on its own."""
-from .citations import CitationCheck
-from .llm import AnthropicExtractionClient, ExtractionLLMError, RecordedExtractionClient
-from .schema import ExtractedTerms
-from .service import ExtractionResult, extract_terms, extract_terms_from_pages, to_interest_terms
+"""Shared document-term extraction pipeline. Asset-class plugins supply an ExtractionSpec."""
+from termscheck.extraction.citations import CitationCheck
+from termscheck.extraction.llm import AnthropicExtractionClient, ExtractionLLMError, RecordedExtractionClient
+from termscheck.extraction.service import ExtractionResult, extract_terms, extract_terms_from_pages
+from termscheck.extraction.spec import ExtractionSpec
 
-__all__ = ["AnthropicExtractionClient", "CitationCheck", "ExtractedTerms", "ExtractionLLMError",
-           "ExtractionResult", "RecordedExtractionClient", "extract_terms", "extract_terms_from_pages",
-           "to_interest_terms"]
+__all__ = ["AnthropicExtractionClient", "CitationCheck", "ExtractionLLMError", "ExtractionResult",
+           "ExtractionSpec", "RecordedExtractionClient", "extract_terms", "extract_terms_from_pages"]

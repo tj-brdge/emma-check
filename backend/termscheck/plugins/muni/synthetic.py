@@ -10,10 +10,11 @@ import random
 from dataclasses import dataclass, field, replace
 from datetime import date, timedelta
 
-from .bondmath import (DayCount, InterestTerms, InterestType, accrued_interest, cash_flows,
+from termscheck.plugins.muni.bondmath import (DayCount, InterestTerms, InterestType, accrued_interest, cash_flows,
                        dirty_price_from_yield)
-from .bondmath.daycount import add_months
-from .screens.models import Position, PricePoint, SecurityRecord
+from termscheck.core.daycount import add_months
+from termscheck.core.identifiers import cusip_check_digit  # noqa: F401
+from termscheck.core.records import Position, PricePoint, SecurityRecord
 
 AS_OF = date(2026, 11, 30)
 SEED = 20261125
@@ -32,21 +33,6 @@ PLACES = ["Alder", "Briar", "Cedar", "Dunmore", "Elmwood", "Fairhaven", "Granite
           "Pinecrest", "Quarry", "Redfield", "Stonebridge", "Thornton", "Upland", "Vale",
           "Westfield", "Yarrow"]
 COUPON_MONTHS = [(6, 1), (1, 1), (2, 15), (3, 1), (4, 1), (5, 1)]
-
-
-def cusip_check_digit(base8: str) -> str:
-    total = 0
-    for i, ch in enumerate(base8):
-        if ch.isdigit():
-            v = int(ch)
-        elif ch.isalpha():
-            v = ord(ch.upper()) - 55
-        else:
-            v = {"*": 36, "@": 37, "#": 38}[ch]
-        if i % 2 == 1:
-            v *= 2
-        total += v // 10 + v % 10
-    return str((10 - total % 10) % 10)
 
 
 @dataclass
@@ -295,7 +281,7 @@ def generate(seed: int = SEED, n_clean: int = 188) -> SyntheticDataset:
 
 
 def to_screen_input(ds: SyntheticDataset):
-    from .screens.models import ScreenInput
+    from termscheck.core.records import ScreenInput
     return ScreenInput(
         as_of=ds.as_of,
         positions=[h.position for h in ds.holdings],

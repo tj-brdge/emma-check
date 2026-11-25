@@ -6,7 +6,7 @@ PDF. It must respect MSRB terms of use and rate limits. Not implemented in v1 by
 """
 from __future__ import annotations
 
-from .base import DocumentRef, FetchedDocument
+from termscheck.extraction.sources.base import DocumentRef, FetchedDocument
 
 
 class EmmaSource:

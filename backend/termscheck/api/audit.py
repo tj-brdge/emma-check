@@ -4,9 +4,9 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..audit import verify_chain
-from ..db.models import AuditEvent
-from .deps import get_session
+from termscheck.audit import verify_chain
+from termscheck.db.models import AuditEvent
+from termscheck.api.deps import get_session
 
 router = APIRouter(prefix="/api", tags=["audit"])
 

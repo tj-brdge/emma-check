@@ -2,9 +2,9 @@
 or price mismatch between the primary and secondary vendor."""
 from __future__ import annotations
 
-from .base import ScreenContext, clamp_severity
-from .config import ScreenConfig
-from .models import Flag, ScreenInput
+from termscheck.screens.base import ScreenContext, clamp_severity
+from termscheck.screens.config import ScreenConfig
+from termscheck.core.records import Flag, ScreenInput
 
 WEIGHTS = {"coupon": 40, "accrual_type": 40, "price_convention": 30, "payment_frequency": 20,
            "day_count": 15, "maturity_date": 30, "price": 15}

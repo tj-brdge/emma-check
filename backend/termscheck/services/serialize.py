@@ -6,7 +6,6 @@ from datetime import date, datetime
 from enum import Enum
 from typing import Any
 
-from ..bondmath import DayCount, InterestTerms, InterestType
 
 
 def jsonable(x: Any) -> Any:
@@ -23,14 +22,3 @@ def jsonable(x: Any) -> Any:
     if isinstance(x, float) and (x != x or x in (float("inf"), float("-inf"))):
         return None
     return x
-
-
-def terms_from_dict(d: dict) -> InterestTerms:
-    def dt(k):
-        return date.fromisoformat(d[k]) if d.get(k) else None
-    return InterestTerms(
-        interest_type=InterestType(d["interest_type"]), rate=d["rate"], dated_date=dt("dated_date"),
-        maturity_date=dt("maturity_date"), day_count=DayCount(d["day_count"]),
-        payment_frequency=d["payment_frequency"], compounding_frequency=d["compounding_frequency"],
-        first_coupon_date=dt("first_coupon_date"), first_compounding_date=dt("first_compounding_date"),
-        conversion_date=dt("conversion_date"))

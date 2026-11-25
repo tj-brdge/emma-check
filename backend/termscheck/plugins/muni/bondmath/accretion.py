@@ -9,9 +9,9 @@ from __future__ import annotations
 
 from datetime import date
 
-from .daycount import add_months, period_fraction, year_fraction
-from .schedules import regular_schedule
-from .models import AccretionPoint, InterestTerms, InterestType
+from termscheck.core.daycount import add_months, period_fraction, year_fraction
+from termscheck.core.schedules import regular_schedule
+from termscheck.plugins.muni.bondmath.models import AccretionPoint, InterestTerms, InterestType
 
 ACCRETING_TYPES = (
     InterestType.CAPITAL_APPRECIATION,

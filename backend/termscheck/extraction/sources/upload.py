@@ -5,7 +5,7 @@ import hashlib
 import json
 from pathlib import Path
 
-from .base import DocumentRef, FetchedDocument
+from termscheck.extraction.sources.base import DocumentRef, FetchedDocument
 
 
 class UploadSource:

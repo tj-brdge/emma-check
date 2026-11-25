@@ -3,10 +3,10 @@ from __future__ import annotations
 
 from datetime import date
 
-from .accretion import accreted_value
-from .daycount import year_fraction
-from .schedules import bracket, regular_schedule
-from .models import CashFlow, InterestTerms, InterestType
+from termscheck.plugins.muni.bondmath.accretion import accreted_value
+from termscheck.core.daycount import year_fraction
+from termscheck.core.schedules import bracket, regular_schedule
+from termscheck.plugins.muni.bondmath.models import CashFlow, InterestTerms, InterestType
 
 
 def coupon_start(terms: InterestTerms) -> date | None:

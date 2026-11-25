@@ -15,8 +15,8 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table
 
-from termscheck.bondmath import accretion_schedule
-from termscheck.synthetic import SEED, generate
+from termscheck.plugins.muni.bondmath import accretion_schedule
+from termscheck.plugins.muni.synthetic import SEED, generate
 
 ss = getSampleStyleSheet()
 H = ParagraphStyle("h", parent=ss["Heading2"], fontName="Times-Bold", fontSize=12, spaceAfter=6)
@@ -40,7 +40,7 @@ def filler(title: str, n: int = 6):
 
 def build_d01(path: Path, cusip: str, other_cusips: list[str]):
     """Deferred interest bonds, 11% compounded semiannually, paid at maturity 2034."""
-    from termscheck.bondmath import InterestTerms, InterestType
+    from termscheck.plugins.muni.bondmath import InterestTerms, InterestType
     t = InterestTerms(InterestType.DEFERRED_INTEREST, 0.11, date(2019, 7, 1), date(2034, 7, 1))
     s = []
     s += [Paragraph("NEW ISSUE - BOOK-ENTRY ONLY &nbsp;&nbsp;&nbsp; NOT RATED", C), Spacer(1, 12),
@@ -171,7 +171,7 @@ def main():
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
     ds = generate(a.seed)
-    from termscheck.synthetic import _Gen
+    from termscheck.plugins.muni.synthetic import _Gen
     g = _Gen(a.seed + 1)
     d = {x.defect_id[:3]: x for x in ds.defects}
     build_d01(out / f"OS_{d['D01'].cusip}.pdf", d["D01"].cusip, [g.cusip() for _ in range(4)])

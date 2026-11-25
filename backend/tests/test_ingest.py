@@ -4,7 +4,7 @@ import pytest
 
 from termscheck.ingest import parse_holdings, parse_price_history, parse_vendor
 from termscheck.screens import run_screens
-from termscheck.synthetic import to_screen_input
+from termscheck.plugins.muni.synthetic import to_screen_input
 
 HEADER = ("CUSIP,Description,Par,Market Price,Convention,Vendor Coupon,Vendor Accrual Type,"
           "Maturity Date,Issue Date,Rating,Sector,State,Yield\n")

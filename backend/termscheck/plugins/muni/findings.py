@@ -3,12 +3,12 @@ income impact across positions. Pure functions; narratives are deterministic tem
 computed numbers (no LLM), so every figure in a finding is reproducible."""
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 from datetime import date
 from typing import Any
 
-from ..bondmath import InterestTerms, InterestType, Treatment, VendorView, compute_treatment
-from ..screens.models import Position, SecurityRecord
+from termscheck.plugins.muni.bondmath import InterestTerms, InterestType, Treatment, VendorView, compute_treatment
+from termscheck.core.findings import FindingDraft, Metric, PositionResult
+from termscheck.core.records import Position, SecurityRecord
 
 TYPE_LABEL = {
     InterestType.CURRENT_PAY: "current-pay",
@@ -17,31 +17,6 @@ TYPE_LABEL = {
     InterestType.CONVERTIBLE_CAB: "convertible capital appreciation",
 }
 FREQ = {0: "simple (no compounding)", 1: "annually", 2: "semiannually", 4: "quarterly", 12: "monthly"}
-
-
-@dataclass
-class PositionImpact:
-    portfolio: str
-    par: float
-    treatment: Treatment
-
-
-@dataclass
-class FindingDraft:
-    cusip: str
-    description: str
-    as_of: date
-    income_impact_usd: float
-    run_rate_gap_usd: float
-    headline: str
-    vendor_says: str
-    document_says: str
-    correct_treatment: str
-    impact: str
-    comparison: list[dict[str, Any]]
-    positions: list[PositionImpact]
-    treatment: Treatment                  # per-100 treatment (identical across positions)
-    rules: list[str] = field(default_factory=list)
 
 
 def vendor_interest_type(rec: SecurityRecord) -> str:
@@ -124,12 +99,11 @@ def build_finding(rec: SecurityRecord, positions: list[Position], terms: Interes
     if not positions:
         raise ValueError(f"no positions held in {rec.cusip}")
     vendor = VendorView(rec.price, rec.price_convention, rec.coupon, rec.accrual_type)
-    impacts = [PositionImpact(p.portfolio, p.par, compute_treatment(terms, vendor, p.par, as_of,
-                                                                    window_start=p.acquisition_date))
+    treated = [(p, compute_treatment(terms, vendor, p.par, as_of, window_start=p.acquisition_date))
                for p in positions]
     total_par = sum(p.par for p in positions)
     t = compute_treatment(terms, vendor, 100.0, as_of)  # per-100 view for narrative
-    usd = sum(i.treatment.unbooked_income_usd for i in impacts)
+    usd = sum(tr.unbooked_income_usd for _, tr in treated)
 
     yv = t.yield_vendor_terms
     vendor_says = (f"{rec.vendor} carries {rec.cusip} as {vendor_interest_type(rec).replace('_', ' ')} "
@@ -171,18 +145,33 @@ def build_finding(rec: SecurityRecord, positions: list[Position], terms: Interes
                   f"({-t.unbooked_per_100:.4f} per 100): accrual booked from vendor terms does not exist "
                   "under the document terms.")
         headline = f"Overbooked income ${-usd:,.0f}: {what}"
-    rr = sum(i.treatment.run_rate_gap_usd for i in impacts)
+    rr = sum(tr.run_rate_gap_usd for _, tr in treated)
     if abs(rr) >= 0.5:
         impact += (f" Next 12 months: document terms earn {t.income_next_12m_document:.4f} per 100 vs "
                    f"{t.income_next_12m_vendor:.4f} booked from vendor terms, a run-rate "
                    f"{'shortfall' if rr > 0 else 'overstatement'} of ${abs(rr):,.0f}.")
         if abs(usd) < 0.5:
             headline = f"Income run-rate {'understated' if rr > 0 else 'overstated'} ${abs(rr):,.0f}/yr: {what}"
-    windows = [i for i in impacts if i.treatment.unbooked_window_usd is not None]
+    windows = [tr for _, tr in treated if tr.unbooked_window_usd is not None]
     if windows:
-        w = sum(i.treatment.unbooked_window_usd for i in windows)
+        w = sum(tr.unbooked_window_usd for tr in windows)
         impact += f" Since acquisition: ${w:,.0f} for positions with an acquisition date."
 
-    return FindingDraft(rec.cusip, rec.description, as_of, usd, rr, headline, vendor_says, document_says,
-                        _treatment_text(t, terms, rec), impact, comparison_rows(rec, terms, citations),
-                        impacts, t, rules or [])
+    from termscheck.services.serialize import jsonable
+    pos = [PositionResult(p.portfolio, p.par, tr.unbooked_income_usd, tr.run_rate_gap_usd, tr.unbooked_window_usd,
+                          jsonable({k: v for k, v in vars(tr).items() if k != "schedule"})) for p, tr in treated]
+    metrics = [
+        Metric("Vendor price (full value)", t.full_value), Metric("Correct clean", t.correct_clean),
+        Metric("Accrued interest (document)", t.true_accrued, emphasis=True),
+        Metric("Accrued booked (vendor)", t.vendor_accrued), Metric("Accreted value", t.accreted_value),
+        Metric("Yield · document terms", t.yield_document_terms, "pct"),
+        Metric("Yield · vendor terms", t.yield_vendor_terms, "pct"),
+        Metric("12m income · document", t.income_next_12m_document, "num2"),
+        Metric("12m income · vendor", t.income_next_12m_vendor, "num2"),
+        Metric("Unbooked per 100", t.unbooked_per_100),
+    ]
+    return FindingDraft(rec.cusip, "muni", rec.description, as_of, usd, rr, headline, vendor_says, document_says,
+                        _treatment_text(t, terms, rec), impact, comparison_rows(rec, terms, citations), pos, metrics,
+                        schedule=[{"date": p.date.isoformat(), "value": p.value} for p in t.schedule],
+                        schedule_label="Accreted value schedule (per 100)", notes=list(t.notes),
+                        rules=rules or [], treatment=t)

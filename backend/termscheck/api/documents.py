@@ -6,11 +6,11 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..db.models import Document, Extraction
-from ..extraction.llm import ExtractionLLM
-from ..extraction.sources import UploadSource
-from ..services.extraction import document_pages, register_document, run_extraction
-from .deps import current_user, get_llm, get_session, get_store
+from termscheck.db.models import Document, Extraction
+from termscheck.extraction.llm import ExtractionLLM
+from termscheck.extraction.sources import UploadSource
+from termscheck.services.extraction import document_pages, register_document, run_extraction
+from termscheck.api.deps import current_user, get_llm, get_session, get_store
 
 router = APIRouter(prefix="/api", tags=["documents"])
 

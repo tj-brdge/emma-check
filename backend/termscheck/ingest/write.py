@@ -4,7 +4,7 @@ from __future__ import annotations
 import csv
 import io
 
-from ..screens.models import Position, PricePoint, SecurityRecord
+from termscheck.core.records import Position, PricePoint, SecurityRecord
 
 
 def _pct(x: float | None) -> str:

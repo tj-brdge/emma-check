@@ -6,9 +6,8 @@ import json
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
-from .schema import ExtractedTerms
 
 
 class ExtractionLLMError(RuntimeError):
@@ -17,14 +16,15 @@ class ExtractionLLMError(RuntimeError):
 
 @dataclass
 class LLMResponse:
-    terms: ExtractedTerms
+    terms: BaseModel
     model: str                       # model that actually served the request
     meta: dict[str, Any] = field(default_factory=dict)  # stop_reason, usage, ids, fallback info
     raw_json: dict[str, Any] = field(default_factory=dict)
 
 
 class ExtractionLLM(Protocol):
-    def extract(self, *, system: str, user: str, model: str, max_tokens: int) -> LLMResponse: ...
+    def extract(self, *, system: str, user: str, model: str, max_tokens: int,
+                schema: type[BaseModel]) -> LLMResponse: ...
 
 
 class AnthropicExtractionClient:
@@ -37,11 +37,12 @@ class AnthropicExtractionClient:
         self.client = client
         self.server_fallback = server_fallback
 
-    def extract(self, *, system: str, user: str, model: str, max_tokens: int) -> LLMResponse:
+    def extract(self, *, system: str, user: str, model: str, max_tokens: int,
+                schema: type[BaseModel]) -> LLMResponse:
         import anthropic
         kwargs: dict[str, Any] = dict(model=model, max_tokens=max_tokens, system=system,
                                       messages=[{"role": "user", "content": user}],
-                                      output_format=ExtractedTerms)
+                                      output_format=schema)
         try:
             if self.server_fallback:
                 # On a policy decline, the API re-runs the request on a fallback model.
@@ -80,8 +81,9 @@ class RecordedExtractionClient:
         self.model = model
         self.calls: list[dict[str, Any]] = []
 
-    def extract(self, *, system: str, user: str, model: str, max_tokens: int) -> LLMResponse:
-        self.calls.append({"system": system, "user": user, "model": model})
-        terms = ExtractedTerms.model_validate(self.recorded)
+    def extract(self, *, system: str, user: str, model: str, max_tokens: int,
+                schema: type[BaseModel]) -> LLMResponse:
+        self.calls.append({"system": system, "user": user, "model": model, "schema": schema.__name__})
+        terms = schema.model_validate(self.recorded)
         return LLMResponse(terms, self.model, {"stop_reason": "end_turn", "recorded": True},
                            json.loads(terms.model_dump_json()))

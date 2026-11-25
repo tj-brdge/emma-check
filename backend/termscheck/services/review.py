@@ -3,10 +3,10 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..audit import record
-from ..db.models import Computation, Extraction, Finding, Holding, ReviewAction, VendorTerms
-from ..review import apply, rows_to_csv
-from .extraction import citation_index
+from termscheck.audit import record
+from termscheck.db.models import Computation, Extraction, Finding, Holding, ReviewAction, VendorTerms
+from termscheck.review import apply, rows_to_csv
+from termscheck.services.extraction import citation_index
 
 
 def act(session: Session, *, finding_id: int, action: str, comment: str | None, user: str) -> ReviewAction:

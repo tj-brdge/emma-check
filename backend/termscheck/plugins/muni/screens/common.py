@@ -3,9 +3,9 @@ from __future__ import annotations
 
 from datetime import date
 
-from ..bondmath import VendorView, implied_yield
-from ..bondmath.treatment import vendor_accrued, vendor_terms_as_bond
-from .models import SecurityRecord
+from termscheck.plugins.muni.bondmath import VendorView, implied_yield
+from termscheck.plugins.muni.bondmath.treatment import vendor_accrued, vendor_terms_as_bond
+from termscheck.core.records import SecurityRecord
 
 
 def vendor_view(rec: SecurityRecord) -> VendorView:

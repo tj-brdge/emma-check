@@ -1,9 +1,9 @@
 """Yield/coupon impossibility: the stated coupon cannot produce the reported yield at the price."""
 from __future__ import annotations
 
-from .base import ScreenContext, clamp_severity
-from .config import ScreenConfig
-from .models import Flag, ScreenInput
+from termscheck.screens.base import ScreenContext, clamp_severity
+from termscheck.screens.config import ScreenConfig
+from termscheck.core.records import Flag, ScreenInput
 
 
 class YieldCouponScreen:

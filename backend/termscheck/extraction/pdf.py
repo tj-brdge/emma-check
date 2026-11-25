@@ -29,7 +29,8 @@ def extract_pages(content: bytes) -> list[str]:
     return [(p.extract_text() or "") for p in reader.pages]
 
 
-def select_pages(pages: list[str], cusip: str, max_pages: int) -> PageSelection:
+def select_pages(pages: list[str], cusip: str, max_pages: int,
+                 keywords: dict[str, int] | None = None) -> PageSelection:
     """Choose which pages to send. Small documents go whole. Larger ones: cover pages, pages
     naming the CUSIP, then pages ranked by interest-terms keywords, up to ``max_pages``."""
     n = len(pages)
@@ -40,7 +41,7 @@ def select_pages(pages: list[str], cusip: str, max_pages: int) -> PageSelection:
     for i, text in enumerate(pages, start=1):
         low = text.lower()
         sc = 0.0
-        for pat, w in KEYWORDS.items():
+        for pat, w in (keywords or KEYWORDS).items():
             k = len(re.findall(pat, low))
             if k:
                 sc += w * min(k, 5)

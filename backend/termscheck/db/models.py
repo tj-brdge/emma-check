@@ -9,7 +9,7 @@ from sqlalchemy import (BigInteger, Date, DateTime, ForeignKey, Index, Integer, 
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from .base import Base
+from termscheck.db.base import Base
 
 PRICE = Numeric(18, 6, asdecimal=False)
 RATE = Numeric(14, 10, asdecimal=False)
@@ -44,6 +44,7 @@ class VendorTerms(Base):
     batch_id: Mapped[int] = mapped_column(ForeignKey("upload_batch.id"), index=True)
     vendor: Mapped[str] = mapped_column(String(64))
     cusip: Mapped[str] = mapped_column(String(9), index=True)
+    asset_class: Mapped[str] = mapped_column(String(32), server_default="muni", default="muni", index=True)
     description: Mapped[str] = mapped_column(Text)
     price: Mapped[float] = mapped_column(PRICE)
     price_convention: Mapped[str] = mapped_column(String(8))
@@ -102,6 +103,7 @@ class Document(Base):
     __tablename__ = "document"
     id: Mapped[int] = mapped_column(primary_key=True)
     cusip: Mapped[str] = mapped_column(String(9), index=True)
+    asset_class: Mapped[str] = mapped_column(String(32), server_default="muni", default="muni", index=True)
     source: Mapped[str] = mapped_column(String(16))
     source_ref: Mapped[str] = mapped_column(String(128))
     filename: Mapped[str] = mapped_column(String(255))
@@ -124,6 +126,7 @@ class Extraction(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     document_id: Mapped[int] = mapped_column(ForeignKey("document.id"), index=True)
     cusip: Mapped[str] = mapped_column(String(9), index=True)
+    asset_class: Mapped[str] = mapped_column(String(32), server_default="muni", default="muni", index=True)
     model_requested: Mapped[str] = mapped_column(String(64))
     model_served: Mapped[str | None] = mapped_column(String(64))
     prompt_version: Mapped[str] = mapped_column(String(32))
@@ -143,6 +146,7 @@ class Finding(Base):
     __tablename__ = "finding"
     id: Mapped[int] = mapped_column(primary_key=True)
     cusip: Mapped[str] = mapped_column(String(9), index=True)
+    asset_class: Mapped[str] = mapped_column(String(32), server_default="muni", default="muni", index=True)
     description: Mapped[str] = mapped_column(Text)
     as_of: Mapped[date] = mapped_column(Date)
     screen_run_id: Mapped[int] = mapped_column(ForeignKey("screen_run.id"))

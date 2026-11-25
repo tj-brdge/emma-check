@@ -7,7 +7,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 from termscheck.ingest import history_csv, holdings_csv, vendor_csv
-from termscheck.synthetic import SEED, generate
+from termscheck.plugins.muni.synthetic import SEED, generate
 
 
 def main() -> None:

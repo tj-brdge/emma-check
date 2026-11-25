@@ -7,7 +7,7 @@ from datetime import date
 
 import pytest
 
-from termscheck.bondmath import (
+from termscheck.plugins.muni.bondmath import (
     DayCount, InterestTerms, InterestType, VendorView, accreted_value, accretion_schedule,
     accrued_interest, cash_flows, compute_treatment, days_30_360, dirty_price_from_yield,
     economic_income, yield_from_dirty_price,

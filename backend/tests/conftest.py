@@ -1,7 +1,7 @@
 import pytest
 
 from termscheck.screens import run_screens
-from termscheck.synthetic import generate, to_screen_input
+from termscheck.plugins.muni.synthetic import generate, to_screen_input
 
 
 @pytest.fixture(scope="session")
@@ -31,7 +31,9 @@ def engine():
         with eng.connect() as c:
             c.execute(text("select 1"))
     except Exception as e:  # pragma: no cover
-        pytest.skip(f"PostgreSQL not available for db tests: {e}")
+        if os.environ.get("TERMSCHECK_ALLOW_NO_DB") == "1":
+            pytest.skip(f"PostgreSQL not available for db tests: {e}")
+        pytest.fail(f"PostgreSQL not reachable at {TEST_DB} (set TERMSCHECK_ALLOW_NO_DB=1 to skip db tests): {e}")
     from alembic import command
     from alembic.config import Config
     with eng.begin() as c:
@@ -109,12 +111,12 @@ def recorded_llm():
             by_cusip[d.cusip] = json.loads(f.read_text())
 
     class _LLM:
-        def extract(self, *, system, user, model, max_tokens):
+        def extract(self, *, system, user, model, max_tokens, schema):
             c = re.search(r"Target CUSIP: (\w{9})", user).group(1)
             if c not in by_cusip:
                 raise ExtractionLLMError("no recording")
             return RecordedExtractionClient(by_cusip[c], model="recorded").extract(
-                system=system, user=user, model=model, max_tokens=max_tokens)
+                system=system, user=user, model=model, max_tokens=max_tokens, schema=schema)
 
     return _LLM()
 

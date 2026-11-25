@@ -9,12 +9,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from enum import StrEnum
 
-
-class DayCount(StrEnum):
-    THIRTY_360 = "30/360"   # MSRB Rule G-33 / SIA bond basis (muni default)
-    ACT_360 = "ACT/360"
-    ACT_365 = "ACT/365"
-    ACT_ACT = "ACT/ACT"     # ICMA: actual days / (freq * actual days in period)
+from termscheck.core.daycount import DayCount  # noqa: F401  (re-export)
 
 
 class InterestType(StrEnum):

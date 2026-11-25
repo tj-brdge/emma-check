@@ -1,6 +1,6 @@
 import pytest
 
-from termscheck.findings import build_finding
+from termscheck.plugins.muni.findings import build_finding
 
 
 def built(dataset, prefix):

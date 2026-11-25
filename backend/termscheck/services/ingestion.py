@@ -4,9 +4,9 @@ from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
 
-from ..audit import record
-from ..db.models import Holding, PriceHistory, UploadBatch, VendorTerms
-from ..ingest import ParseResult, parse_holdings, parse_price_history, parse_vendor
+from termscheck.audit import record
+from termscheck.db.models import Holding, PriceHistory, UploadBatch, VendorTerms
+from termscheck.ingest import ParseResult, parse_holdings, parse_price_history, parse_vendor
 
 KINDS = ("holdings", "vendor_secondary", "price_history")
 

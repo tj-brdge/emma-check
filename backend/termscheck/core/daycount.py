@@ -4,7 +4,14 @@ from __future__ import annotations
 import calendar
 from datetime import date
 
-from .models import DayCount
+from enum import StrEnum
+
+
+class DayCount(StrEnum):
+    THIRTY_360 = "30/360"   # MSRB Rule G-33 / SIA bond basis (muni default)
+    ACT_360 = "ACT/360"
+    ACT_365 = "ACT/365"
+    ACT_ACT = "ACT/ACT"     # ICMA: actual days / (freq * actual days in period)
 
 
 def is_last_day_of_feb(d: date) -> bool:

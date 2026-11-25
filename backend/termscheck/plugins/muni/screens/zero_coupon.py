@@ -2,10 +2,10 @@
 maturity implies a ~0% or negative yield, which a real zero would not carry."""
 from __future__ import annotations
 
-from .base import ScreenContext, clamp_severity
-from .common import years_between
-from .config import ScreenConfig
-from .models import Flag, ScreenInput
+from termscheck.screens.base import ScreenContext, clamp_severity
+from termscheck.plugins.muni.screens.common import years_between
+from termscheck.screens.config import ScreenConfig
+from termscheck.core.records import Flag, ScreenInput
 
 
 class ZeroCouponScreen:

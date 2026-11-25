@@ -15,10 +15,10 @@ from __future__ import annotations
 
 import statistics
 
-from .base import ScreenContext, clamp_severity
-from .common import rating_bucket, years_between
-from .config import ScreenConfig
-from .models import Flag, ScreenInput
+from termscheck.screens.base import ScreenContext, clamp_severity
+from termscheck.plugins.muni.screens.common import rating_bucket, years_between
+from termscheck.screens.config import ScreenConfig
+from termscheck.core.records import Flag, ScreenInput
 
 FINE_BANDS = [(0, 3), (3, 5), (5, 7), (7, 10), (10, 15), (15, 20), (20, 25), (25, 100)]
 

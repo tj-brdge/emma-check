@@ -5,9 +5,9 @@ import pytest
 
 from termscheck.screens import (Position, PricePoint, ScreenConfig, ScreenInput, SecurityRecord,
                                 run_screens)
-from termscheck.screens.peer_outlier import median_polish
-from termscheck.screens.price_drift import linear_fit
-from termscheck.synthetic import generate, to_screen_input
+from termscheck.plugins.muni.screens.peer_outlier import median_polish
+from termscheck.plugins.muni.screens.price_drift import linear_fit
+from termscheck.plugins.muni.synthetic import generate, to_screen_input
 
 AS_OF = date(2026, 11, 30)
 ALL_RULES = {"yield_coupon_impossibility", "price_drift", "peer_outlier", "vendor_disagreement",

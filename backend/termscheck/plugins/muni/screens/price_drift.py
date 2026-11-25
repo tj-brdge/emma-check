@@ -16,10 +16,10 @@ from __future__ import annotations
 import statistics
 from datetime import date
 
-from .base import ScreenContext, clamp_severity
-from .common import maturity_band, vendor_implied_yield, years_between
-from .config import ScreenConfig
-from .models import Flag, PricePoint, ScreenInput, SecurityRecord
+from termscheck.screens.base import ScreenContext, clamp_severity
+from termscheck.plugins.muni.screens.common import maturity_band, vendor_implied_yield, years_between
+from termscheck.screens.config import ScreenConfig
+from termscheck.core.records import Flag, PricePoint, ScreenInput, SecurityRecord
 
 
 def linear_fit(xs: list[float], ys: list[float]) -> tuple[float, float, float]:

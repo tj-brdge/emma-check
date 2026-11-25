@@ -16,8 +16,8 @@ from typing import Any
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
-from ..db.models import AuditEvent
-from ..services.serialize import jsonable
+from termscheck.db.models import AuditEvent
+from termscheck.services.serialize import jsonable
 
 GENESIS = "0" * 64
 _LOCK_KEY = 7_340_001  # arbitrary constant for pg_advisory_xact_lock

@@ -4,9 +4,9 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..db.models import UploadBatch
-from ..services.ingestion import KINDS, IngestError, ingest_file, record_rejection
-from .deps import current_user, get_session
+from termscheck.db.models import UploadBatch
+from termscheck.services.ingestion import KINDS, IngestError, ingest_file, record_rejection
+from termscheck.api.deps import current_user, get_session
 
 router = APIRouter(prefix="/api", tags=["uploads"])
 

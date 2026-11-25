@@ -3,6 +3,7 @@ export type FindingStatus = "open" | "approved" | "rejected";
 export interface FindingSummary {
   id: number;
   cusip: string;
+  asset_class: string;
   description: string;
   as_of: string;
   screen_run_id: number;
@@ -27,19 +28,11 @@ export interface ComparisonRow {
   citation_status: string | null;
 }
 
-export interface Per100 {
-  accreted_value: number | null;
-  true_accrued: number;
-  vendor_accrued: number;
-  full_value: number;
-  correct_clean: number;
-  correct_dirty: number;
-  vendor_clean: number;
-  yield_document_terms: number | null;
-  yield_vendor_terms: number | null;
-  unbooked_per_100: number;
-  income_next_12m_document: number;
-  income_next_12m_vendor: number;
+export interface Metric {
+  label: string;
+  value: number | null;
+  fmt: "num4" | "num2" | "pct" | "usd";
+  emphasis: boolean;
 }
 
 export interface FindingDetail extends FindingSummary {
@@ -50,8 +43,9 @@ export interface FindingDetail extends FindingSummary {
     impact: string;
     extraction_status: string;
     extraction_problems: string[];
-    per_100: Per100;
-    schedule: { date: string; value: number }[];
+    metrics: Metric[];
+    schedule: Record<string, string | number | null>[];
+    schedule_label: string;
     notes: string[];
   };
   comparison: ComparisonRow[];

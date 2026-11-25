@@ -11,8 +11,8 @@ from __future__ import annotations
 
 from datetime import date
 
-from .daycount import add_months, period_fraction, year_fraction
-from .models import CashFlow, DayCount
+from termscheck.core.daycount import add_months, period_fraction, year_fraction
+from termscheck.plugins.muni.bondmath.models import CashFlow, DayCount
 
 
 def _grid(anchor: date, step: int, k: int) -> date:

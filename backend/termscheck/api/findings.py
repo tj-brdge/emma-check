@@ -5,15 +5,15 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from ..db.models import Finding
-from ..services.findings import FindingError, create_finding
-from .deps import current_user, get_session
+from termscheck.db.models import Finding
+from termscheck.services.findings import FindingError, create_finding
+from termscheck.api.deps import current_user, get_session
 
 router = APIRouter(prefix="/api", tags=["findings"])
 
 
 def finding_json(f: Finding, detail: bool = False) -> dict:
-    out = {"id": f.id, "cusip": f.cusip, "description": f.description, "as_of": f.as_of.isoformat(),
+    out = {"id": f.id, "cusip": f.cusip, "asset_class": f.asset_class, "description": f.description, "as_of": f.as_of.isoformat(),
            "screen_run_id": f.screen_run_id, "extraction_id": f.extraction_id,
            "income_impact_usd": f.income_impact_usd, "run_rate_gap_usd": f.run_rate_gap_usd,
            "headline": f.headline, "rules": f.rules, "status": f.status,

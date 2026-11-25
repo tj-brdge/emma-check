@@ -5,9 +5,9 @@ from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from ..review import ReviewError
-from ..services.review import act, approved_csv, history
-from .deps import current_user, get_session
+from termscheck.review import ReviewError
+from termscheck.services.review import act, approved_csv, history
+from termscheck.api.deps import current_user, get_session
 
 router = APIRouter(prefix="/api", tags=["review"])
 

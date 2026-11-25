@@ -3,31 +3,42 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..audit import record
-from ..db.models import Document, DocumentPage, Extraction
-from ..extraction import ExtractionLLMError, extract_terms_from_pages
-from ..extraction.llm import ExtractionLLM
-from ..extraction.pdf import extract_pages
-from ..extraction.sources import UploadSource
-from ..settings import settings
-from .serialize import jsonable
+from termscheck.audit import record
+from termscheck.db.models import Document, DocumentPage, Extraction
+from termscheck.core.plugin import get_plugin
+from termscheck.db.models import VendorTerms
+from termscheck.extraction import ExtractionLLMError, extract_terms_from_pages
+from termscheck.extraction.llm import ExtractionLLM
+from termscheck.extraction.pdf import extract_pages
+from termscheck.extraction.sources import UploadSource
+from termscheck.settings import settings
+from termscheck.services.serialize import jsonable
+
+
+def asset_class_of(session: Session, cusip: str) -> str:
+    """Asset class from the most recent reference data for the CUSIP (munis if unknown)."""
+    v = session.scalars(select(VendorTerms.asset_class).where(VendorTerms.cusip == cusip.upper())
+                        .order_by(VendorTerms.id.desc())).first()
+    return v or "muni"
 
 
 def register_document(session: Session, store: UploadSource, *, cusip: str, filename: str,
-                      content: bytes, user: str) -> Document:
+                      content: bytes, user: str, asset_class: str | None = None) -> Document:
+    asset_class = asset_class or asset_class_of(session, cusip)
+    get_plugin(asset_class)  # validates the key
     ref = store.put(cusip, filename, content)
     pages = extract_pages(content)
     doc = Document(cusip=cusip.upper(), source=store.name, source_ref=ref.ref, filename=filename,
                    sha256=ref.ref, page_count=len(pages), storage_path=str(store.root / f"{ref.ref}.pdf"),
-                   uploaded_by=user)
+                   uploaded_by=user, asset_class=asset_class)
     session.add(doc)
     session.flush()
     for i, t in enumerate(pages, start=1):
         session.add(DocumentPage(document_id=doc.id, page_no=i, text=t))
     session.flush()
     record(session, actor=user, event_type="document.registered", entity_type="document", entity_id=doc.id,
-           payload={"cusip": doc.cusip, "source": doc.source, "filename": filename, "sha256": doc.sha256,
-                    "pages": doc.page_count})
+           payload={"cusip": doc.cusip, "asset_class": asset_class, "source": doc.source,
+                    "filename": filename, "sha256": doc.sha256, "pages": doc.page_count})
     return doc
 
 
@@ -45,15 +56,14 @@ def run_extraction(session: Session, *, document_id: int, llm: ExtractionLLM, us
     cusip = (cusip or doc.cusip).upper()
     model = model or settings.extraction_model
     pages = document_pages(session, document_id)
+    plugin = get_plugin(doc.asset_class)
     ex = Extraction(document_id=doc.id, cusip=cusip, model_requested=model, created_by=user,
-                    prompt_version="", status="failed")
+                    prompt_version=plugin.extraction.prompt_version, status="failed", asset_class=plugin.key)
     try:
-        res = extract_terms_from_pages(pages, cusip, llm, model=model,
+        res = extract_terms_from_pages(pages, cusip, llm, plugin.extraction, model=model,
                                        max_tokens=settings.extraction_max_tokens,
                                        max_pages=settings.extraction_max_pages)
     except ExtractionLLMError as e:
-        from ..extraction.prompt import PROMPT_VERSION
-        ex.prompt_version = PROMPT_VERSION
         ex.error = str(e)
         session.add(ex)
         session.flush()
@@ -66,14 +76,14 @@ def run_extraction(session: Session, *, document_id: int, llm: ExtractionLLM, us
     ex.status = res.status
     ex.terms = res.raw_json
     ex.citation_checks = [c.as_dict() for c in res.checks]
-    ex.interest_terms = jsonable(res.interest_terms) if res.interest_terms else None
+    ex.interest_terms = plugin.terms_to_json(res.interest_terms) if res.interest_terms else None
     ex.problems = res.problems
     ex.page_selection = jsonable(res.selection)
     ex.llm_meta = jsonable(res.llm_meta)
     session.add(ex)
     session.flush()
     record(session, actor=user, event_type="extraction.completed", entity_type="extraction", entity_id=ex.id,
-           payload={"cusip": cusip, "document_id": doc.id, "document_sha256": doc.sha256,
+           payload={"cusip": cusip, "asset_class": plugin.key, "document_id": doc.id, "document_sha256": doc.sha256,
                     "model_requested": model, "model_served": ex.model_served,
                     "prompt_version": ex.prompt_version, "status": ex.status, "problems": ex.problems,
                     "pages_sent": res.selection.pages, "interest_terms": ex.interest_terms,

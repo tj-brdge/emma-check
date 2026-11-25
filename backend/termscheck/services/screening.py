@@ -6,9 +6,9 @@ from datetime import date, datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..audit import record
-from ..db.models import Holding, PriceHistory, ScreenFlag, ScreenRun, UploadBatch, VendorTerms
-from ..screens import Position, PricePoint, ScreenConfig, ScreenInput, SecurityRecord, run_screens
+from termscheck.audit import record
+from termscheck.db.models import Holding, PriceHistory, ScreenFlag, ScreenRun, UploadBatch, VendorTerms
+from termscheck.screens import Position, PricePoint, ScreenConfig, ScreenInput, SecurityRecord, run_screens
 
 _SEC_FIELDS = [f.name for f in fields(SecurityRecord)]
 

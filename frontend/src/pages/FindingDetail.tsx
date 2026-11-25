@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../api";
 import { RULE_LABEL, num, par, pct, ts, usd } from "../format";
+import type { Metric } from "../types";
 import type { Extraction, FindingDetail, Flag, ReviewActionT } from "../types";
 import PageViewer from "./PageViewer";
 
@@ -46,7 +47,6 @@ export default function FindingDetailPage({ id }: { id: number }) {
   };
 
   if (!f) return <div className="muted">{err ?? "Loading…"}</div>;
-  const m = f.narrative.per_100;
   const totalPar = f.positions.reduce((a, p) => a + p.par, 0);
   const cite = (page: number | null, excerpt: string | null, status?: string | null) =>
     page ? (
@@ -72,7 +72,7 @@ export default function FindingDetailPage({ id }: { id: number }) {
           <div className="l">{f.income_impact_usd >= 0 ? "Unbooked income (understated)" : "Income overstated"}</div>
         </div>
         <div className="kpi"><div className="v">{usd(f.run_rate_gap_usd)}</div><div className="l">12m run-rate gap</div></div>
-        <div className="kpi"><div className="v">{num(m.unbooked_per_100)}</div><div className="l">per 100 par</div></div>
+        <div className="kpi"><div className="v">{f.asset_class === "agency_mbs" ? "Agency MBS" : "Municipal"}</div><div className="l">asset class</div></div>
         <div className="kpi"><div className="v">{par(totalPar)}</div><div className="l">par held · {f.positions.length} position(s)</div></div>
         <div className="kpi" style={{ flex: 1 }}><div className="wrap b" style={{ fontSize: 13 }}>{f.headline}</div><div className="l">finding</div></div>
       </div>
@@ -106,16 +106,14 @@ export default function FindingDetailPage({ id }: { id: number }) {
           </div>
 
           <div className="panel">
-            <h2>Correct split of the vendor price (per 100 par)</h2>
+            <h2>Correct treatment · key figures</h2>
             <div className="metrics">
-              <div><div className="l">Vendor price (full value)</div><div className="v">{num(m.full_value)}</div></div>
-              <div><div className="l">Correct clean</div><div className="v">{num(m.correct_clean)}</div></div>
-              <div><div className="l">Accrued interest (document)</div><div className="v under">{num(m.true_accrued)}</div></div>
-              <div><div className="l">Accrued booked (vendor)</div><div className="v">{num(m.vendor_accrued)}</div></div>
-              <div><div className="l">Accreted value</div><div className="v">{num(m.accreted_value)}</div></div>
-              <div><div className="l">Yield · document terms</div><div className="v">{pct(m.yield_document_terms)}</div></div>
-              <div><div className="l">Yield · vendor terms</div><div className="v">{pct(m.yield_vendor_terms)}</div></div>
-              <div><div className="l">12m income doc / vendor</div><div className="v">{num(m.income_next_12m_document, 2)} / {num(m.income_next_12m_vendor, 2)}</div></div>
+              {f.narrative.metrics.map((x) => (
+                <div key={x.label}>
+                  <div className="l">{x.label}</div>
+                  <div className={`v ${x.emphasis ? "under" : ""}`}>{fmtMetric(x)}</div>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -153,16 +151,18 @@ export default function FindingDetailPage({ id }: { id: number }) {
           {f.narrative.schedule.length > 0 && (
             <div className="panel">
               <h2>
-                Accreted value schedule (per 100)
+                {f.narrative.schedule_label || "Schedule"}
                 <span className="spacer" />
-                <button className="btn" onClick={() => setShowSched(!showSched)}>{showSched ? "Hide" : `Show ${f.narrative.schedule.length} dates`}</button>
+                <button className="btn" onClick={() => setShowSched(!showSched)}>{showSched ? "Hide" : `Show ${f.narrative.schedule.length} rows`}</button>
               </h2>
               {showSched && (
                 <table className="grid">
-                  <thead><tr><th>Date</th><th className="n">Accreted value</th></tr></thead>
+                  <thead><tr>{Object.keys(f.narrative.schedule[0]).map((k) => <th key={k} className={k === "date" ? "" : "n"}>{k.replace(/_/g, " ")}</th>)}</tr></thead>
                   <tbody>
-                    {f.narrative.schedule.map((p) => (
-                      <tr key={p.date} className={p.date === f.as_of ? "mismatch" : ""}><td className="mono">{p.date}</td><td className="n">{num(p.value)}</td></tr>
+                    {f.narrative.schedule.map((row, i) => (
+                      <tr key={i} className={row.date === f.as_of ? "mismatch" : ""}>
+                        {Object.entries(row).map(([k, v]) => <td key={k} className={k === "date" ? "mono" : "n"}>{typeof v === "number" ? num(v) : v ?? "—"}</td>)}
+                      </tr>
                     ))}
                   </tbody>
                 </table>
@@ -252,4 +252,11 @@ export default function FindingDetailPage({ id }: { id: number }) {
       {view && ex && <PageViewer documentId={ex.document_id} page={view.page} excerpt={view.excerpt} onClose={() => setView(null)} />}
     </>
   );
+}
+
+function fmtMetric(m: Metric): string {
+  if (m.value === null || m.value === undefined) return "—";
+  if (m.fmt === "pct") return pct(m.value, 3);
+  if (m.fmt === "usd") return usd(m.value);
+  return num(m.value, m.fmt === "num2" ? 2 : 4);
 }

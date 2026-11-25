@@ -10,19 +10,21 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-from .bondmath import VendorView, compute_treatment
-from .services.serialize import jsonable, terms_from_dict
+from termscheck.core.plugin import get_plugin
+from termscheck.plugins.muni.bondmath import VendorView, compute_treatment
+from termscheck.services.serialize import jsonable
 
 
 def extract_official_statement_terms(pdf_path: str, cusip: str, model: str = "claude-sonnet-5-5",
-                                     llm: Any | None = None) -> dict[str, Any]:
+                                     llm: Any | None = None, asset_class: str = "muni") -> dict[str, Any]:
     """Extract interest terms for one CUSIP from an official statement PDF.
 
     Returns every field with value, page and verbatim excerpt, the deterministic citation
     check for each field, the mapped bond-math terms (or null) and an overall status.
     """
-    from .extraction import AnthropicExtractionClient, extract_terms
-    res = extract_terms(Path(pdf_path).read_bytes(), cusip, llm or AnthropicExtractionClient(), model=model)
+    from termscheck.extraction import AnthropicExtractionClient, extract_terms
+    res = extract_terms(Path(pdf_path).read_bytes(), cusip, llm or AnthropicExtractionClient(),
+                        get_plugin(asset_class).extraction, model=model)
     return {
         "cusip": res.cusip, "status": res.status, "model": res.model, "prompt_version": res.prompt_version,
         "fields": res.raw_json, "citation_checks": [c.as_dict() for c in res.checks],
@@ -40,7 +42,7 @@ def compute_bond_treatment(interest_terms: dict[str, Any], vendor_price: float, 
     (rates as decimals, dates ISO). vendor_coupon is a decimal (0.05 = 5%). Prices per 100 par.
     """
     t = compute_treatment(
-        terms_from_dict(interest_terms),
+        get_plugin("muni").terms_from_json(interest_terms),
         VendorView(vendor_price, vendor_price_convention, vendor_coupon, vendor_accrual_type),
         par, date.fromisoformat(as_of),
         window_start=date.fromisoformat(acquisition_date) if acquisition_date else None)

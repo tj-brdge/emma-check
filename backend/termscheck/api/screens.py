@@ -7,9 +7,9 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..db.models import ScreenFlag, ScreenRun
-from ..services.screening import execute_screen_run
-from .deps import current_user, get_session
+from termscheck.db.models import ScreenFlag, ScreenRun
+from termscheck.services.screening import execute_screen_run
+from termscheck.api.deps import current_user, get_session
 
 router = APIRouter(prefix="/api", tags=["screens"])
 
