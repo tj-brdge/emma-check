@@ -88,6 +88,15 @@ class LedgerEntry:
 
 
 @dataclass(frozen=True)
+class PeriodObservation:
+    """A per-period data point from a disclosure file (e.g. a pool's monthly factor and net coupon)."""
+    month: date                        # first day of the period
+    factor: float | None = None
+    net_coupon: float | None = None    # annual decimal; None = not disclosed (never zero)
+    source: str | None = None          # locator, e.g. "pool.csv:row 14"
+
+
+@dataclass(frozen=True)
 class CashPeriod:
     """The accrual period a cash receipt pays, as determined by the security's plugin."""
     start: date
@@ -106,6 +115,7 @@ class ScreenInput:
     history: dict[str, list[PricePoint]] = field(default_factory=dict)
     vendors: dict[str, dict[str, SecurityRecord]] = field(default_factory=dict)  # source -> cusip -> record
     ledger: list[LedgerEntry] = field(default_factory=list)
+    observations: dict[str, list[PeriodObservation]] = field(default_factory=dict)   # cusip -> by period
 
     def vendor_sources(self) -> dict[str, dict[str, SecurityRecord]]:
         """All non-book sources (legacy ``secondary`` folded in under its vendor name)."""

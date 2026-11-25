@@ -20,6 +20,7 @@ from datetime import date, timedelta
 from enum import StrEnum
 
 from termscheck.core.daycount import DayCount, add_months, days_30_360
+from termscheck.core.records import PeriodObservation
 
 
 class RateType(StrEnum):
@@ -28,12 +29,7 @@ class RateType(StrEnum):
     ARM = "arm"          # index + margin with caps; resets on a schedule
 
 
-@dataclass(frozen=True)
-class MonthObservation:
-    month: date                      # first day of the accrual month
-    factor: float | None = None
-    net_coupon: float | None = None  # annual decimal
-    source: str | None = None        # locator, e.g. "pool_disclosure.csv:row 14"
+MonthObservation = PeriodObservation   # first day of the accrual month; factor; net coupon; locator
 
 
 @dataclass(frozen=True)

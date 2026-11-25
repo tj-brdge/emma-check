@@ -5,11 +5,11 @@ from dataclasses import dataclass
 from sqlalchemy.orm import Session
 
 from termscheck.audit import record
-from termscheck.db.models import Holding, PriceHistory, UploadBatch, VendorTerms
+from termscheck.db.models import Holding, LedgerRow, PriceHistory, UploadBatch, VendorTerms
 from termscheck.core.records import BLANK
-from termscheck.ingest import ParseResult, parse_holdings, parse_price_history, parse_vendor
+from termscheck.ingest import ParseResult, parse_holdings, parse_ledger, parse_price_history, parse_vendor
 
-KINDS = ("holdings", "vendor_secondary", "price_history")
+KINDS = ("holdings", "vendor_secondary", "price_history", "ledger")
 RECORD_COLUMNS = ("vendor", "source_role", "source_row", "cusip", "asset_class", "description", "price",
                   "price_convention", "coupon", "accrual_type", "maturity_date", "issue_date", "rating", "sector",
                   "state", "payment_frequency", "day_count", "vendor_yield", "product_type", "factor",
@@ -38,6 +38,8 @@ def ingest_file(session: Session, *, kind: str, filename: str, text: str, user: 
         res = parse_vendor(text, vendor)
     elif kind == "price_history":
         res = parse_price_history(text)
+    elif kind == "ledger":
+        res = parse_ledger(text)
     else:
         raise ValueError(f"unknown upload kind {kind!r}")
     if not res.ok:
@@ -53,6 +55,9 @@ def ingest_file(session: Session, *, kind: str, filename: str, text: str, user: 
     for r in res.records:
         session.add(VendorTerms(batch_id=batch.id, field_states=dict(r.states), raw=dict(r.raw),
                                 **{k: getattr(r, k) for k in RECORD_COLUMNS}))
+    for i, e in enumerate(res.ledger, start=1):
+        session.add(LedgerRow(batch_id=batch.id, row_no=i, portfolio=e.portfolio, cusip=e.cusip,
+                              entry_date=e.entry_date, cash=e.cash, kind=e.kind, booked_income=e.booked_income))
     if res.prices:
         session.bulk_insert_mappings(PriceHistory, [
             dict(batch_id=batch.id, cusip=p.cusip, price_date=p.price_date, price=p.price,
@@ -61,7 +66,7 @@ def ingest_file(session: Session, *, kind: str, filename: str, text: str, user: 
     record(session, actor=user, event_type="upload.accepted", entity_type="upload_batch", entity_id=batch.id,
            payload={"kind": kind, "vendor": vendor, "filename": filename, "sha256": res.sha256,
                     "rows": res.row_count, "positions": len(res.positions), "records": len(res.records),
-                    "prices": len(res.prices),
+                    "prices": len(res.prices), "ledger_entries": len(res.ledger),
                     "blank_cells": blank_summary(res)})
     return IngestOutcome(batch, res)
 

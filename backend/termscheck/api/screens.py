@@ -20,13 +20,15 @@ class ScreenRunRequest(BaseModel):
     secondary_batch_id: int | None = None
     history_batch_id: int | None = None
     vendor_batch_ids: list[int] = []
+    ledger_batch_id: int | None = None
     config: dict | None = None
 
 
 def run_json(r: ScreenRun, with_flags: bool = False) -> dict:
     out = {"id": r.id, "as_of": r.as_of.isoformat(), "holdings_batch_id": r.holdings_batch_id,
            "secondary_batch_id": r.secondary_batch_id, "history_batch_id": r.history_batch_id,
-           "vendor_batch_ids": r.vendor_batch_ids,
+           "vendor_batch_ids": r.vendor_batch_ids, "ledger_batch_id": r.ledger_batch_id,
+           "disclosure_document_ids": r.disclosure_document_ids,
            "config": r.config, "started_by": r.started_by,
            "started_at": r.started_at.isoformat() if r.started_at else None,
            "finished_at": r.finished_at.isoformat() if r.finished_at else None,
@@ -49,7 +51,7 @@ def create_run(req: ScreenRunRequest, user: str = Depends(current_user),
         run = execute_screen_run(session, as_of=req.as_of, holdings_batch_id=req.holdings_batch_id,
                                  secondary_batch_id=req.secondary_batch_id,
                                  history_batch_id=req.history_batch_id,
-                                 vendor_batch_ids=req.vendor_batch_ids,
+                                 vendor_batch_ids=req.vendor_batch_ids, ledger_batch_id=req.ledger_batch_id,
                                  config_overrides=req.config, user=user)
     except (ValueError, TypeError) as e:
         session.rollback()

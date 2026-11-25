@@ -22,6 +22,9 @@ NON_BLANK = ["cusip", "description", "price", "maturity_date"]
 VENDOR_REQUIRED = [c for c in HOLDINGS_REQUIRED if c != "par"]
 VENDOR_OPTIONAL = ["par", "vendor_yield", "payment_frequency", "day_count", "asset_class", "product_type",
                    "factor", "factor_date", "payment_delay_days", "rate_type"]
+LEDGER_REQUIRED = ["cusip", "entry_date", "cash", "type"]
+LEDGER_OPTIONAL = ["portfolio", "booked_income"]
+LEDGER_TYPES = {"interest", "principal"}
 HISTORY_REQUIRED = ["cusip", "price_date", "price"]
 HISTORY_OPTIONAL = ["price_convention"]
 
@@ -33,7 +36,8 @@ ALIASES = {
     "maturity": "maturity_date", "issue": "issue_date", "dated_date": "issue_date",
     "par_amount": "par", "quantity": "par", "face": "par",
     "yield": "vendor_yield", "frequency": "payment_frequency", "pay_freq": "payment_frequency",
-    "date": "price_date",
+    "date": "price_date", "cash_received": "cash", "amount": "cash", "payment_date": "entry_date",
+    "receipt_date": "entry_date", "cash_type": "type", "booked": "booked_income",
     "asset_type": "asset_class", "product": "product_type", "pool_factor": "factor",
     "delay": "payment_delay_days", "delay_days": "payment_delay_days", "coupon_type": "rate_type",
 }

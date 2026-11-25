@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from termscheck.audit import record
-from termscheck.db.models import Document, DocumentPage, Extraction
+from termscheck.db.models import DisclosureObservation, Document, DocumentPage, Extraction
 from termscheck.core.plugin import get_plugin
 from termscheck.db.models import VendorTerms
 from termscheck.extraction import ExtractionLLMError, extract_terms_from_pages
@@ -23,21 +23,39 @@ def asset_class_of(session: Session, cusip: str) -> str:
 
 
 def register_document(session: Session, store: UploadSource, *, cusip: str, filename: str,
-                      content: bytes, user: str, asset_class: str | None = None) -> Document:
+                      content: bytes, user: str, asset_class: str | None = None,
+                      doc_kind: str = "official_statement") -> Document:
     asset_class = asset_class or asset_class_of(session, cusip)
-    get_plugin(asset_class)  # validates the key
-    ref = store.put(cusip, filename, content)
-    pages = extract_pages(content)
+    plugin = get_plugin(asset_class)
+    is_data = doc_kind in getattr(plugin, "data_document_kinds", ())
+    parsed = None
+    if is_data:
+        text = content.decode("utf-8-sig") if content[:4] != b"%PDF" else ""
+        if not text:
+            raise ValueError(f"{doc_kind} must be a UTF-8 data file")
+        parsed = plugin.parse_data_document(doc_kind, filename, text)
+        if parsed.errors:
+            raise ValueError(f"{doc_kind} rejected: " + "; ".join(parsed.errors[:20]))
+        pages = [text]
+    ref = store.put(cusip, filename, content, data_file=is_data)
+    if not is_data:
+        pages = extract_pages(content)
     doc = Document(cusip=cusip.upper(), source=store.name, source_ref=ref.ref, filename=filename,
                    sha256=ref.ref, page_count=len(pages), storage_path=str(store.root / f"{ref.ref}.pdf"),
-                   uploaded_by=user, asset_class=asset_class)
+                   uploaded_by=user, asset_class=asset_class, doc_kind=doc_kind)
     session.add(doc)
     session.flush()
     for i, t in enumerate(pages, start=1):
         session.add(DocumentPage(document_id=doc.id, page_no=i, text=t))
+    if parsed is not None:
+        for r in parsed.rows:
+            session.add(DisclosureObservation(document_id=doc.id, cusip=r.cusip, month=r.obs.month,
+                                              factor=r.obs.factor, net_coupon=r.obs.net_coupon, row_no=r.row_no,
+                                              locator=r.obs.source, raw=r.raw))
     session.flush()
     record(session, actor=user, event_type="document.registered", entity_type="document", entity_id=doc.id,
-           payload={"cusip": doc.cusip, "asset_class": asset_class, "source": doc.source,
+           payload={"cusip": doc.cusip, "asset_class": asset_class, "doc_kind": doc_kind, "source": doc.source,
+                    "observations": len(parsed.rows) if parsed else None,
                     "filename": filename, "sha256": doc.sha256, "pages": doc.page_count})
     return doc
 
@@ -57,6 +75,8 @@ def run_extraction(session: Session, *, document_id: int, llm: ExtractionLLM, us
     model = model or settings.extraction_model
     pages = document_pages(session, document_id)
     plugin = get_plugin(doc.asset_class)
+    if doc.doc_kind in getattr(plugin, "data_document_kinds", ()):
+        raise ValueError(f"document {doc.id} is a {doc.doc_kind} data file; it is parsed on upload, not extracted")
     ex = Extraction(document_id=doc.id, cusip=cusip, model_requested=model, created_by=user,
                     prompt_version=plugin.extraction.prompt_version, status="failed", asset_class=plugin.key)
     try:

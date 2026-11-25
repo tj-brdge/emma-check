@@ -15,11 +15,17 @@ class UploadSource:
         self.root = Path(root)
         self.root.mkdir(parents=True, exist_ok=True)
 
-    def put(self, cusip: str, filename: str, content: bytes) -> DocumentRef:
-        if not content.startswith(b"%PDF"):
-            raise ValueError("official statement must be a PDF")
+    def put(self, cusip: str, filename: str, content: bytes, *, data_file: bool = False) -> DocumentRef:
+        """Store a document. PDFs by default; ``data_file=True`` accepts UTF-8 text/CSV data files."""
+        if data_file:
+            try:
+                content.decode("utf-8-sig")
+            except UnicodeDecodeError:
+                raise ValueError("data file must be UTF-8 text") from None
+        elif not content.startswith(b"%PDF"):
+            raise ValueError("document must be a PDF")
         sha = hashlib.sha256(content).hexdigest()
-        (self.root / f"{sha}.pdf").write_bytes(content)
+        (self.root / f"{sha}.pdf").write_bytes(content)   # content-addressed; extension is nominal
         idx = self._index()
         idx.setdefault(cusip.upper(), {})[sha] = filename
         (self.root / "index.json").write_text(json.dumps(idx, indent=1))

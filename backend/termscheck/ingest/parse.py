@@ -11,7 +11,7 @@ import io
 from dataclasses import dataclass, field
 from datetime import date, datetime
 
-from termscheck.core.records import ABSENT, BLANK, VALUE, Position, PricePoint, SecurityRecord
+from termscheck.core.records import ABSENT, BLANK, VALUE, LedgerEntry, Position, PricePoint, SecurityRecord
 from termscheck.core.identifiers import cusip_check_digit
 from termscheck.ingest import csv_schema as S
 
@@ -31,6 +31,7 @@ class ParseResult:
     positions: list[Position] = field(default_factory=list)
     records: list[SecurityRecord] = field(default_factory=list)
     prices: list[PricePoint] = field(default_factory=list)
+    ledger: list[LedgerEntry] = field(default_factory=list)
     errors: list[RowError] = field(default_factory=list)
     warnings: list[RowError] = field(default_factory=list)
 
@@ -267,4 +268,27 @@ def parse_price_history(text: str) -> ParseResult:
         conv = p.choice("price_convention", S.PRICE_CONVENTIONS, required=False) or "clean"
         if len(res.errors) == before:
             res.prices.append(PricePoint(c, d, px, conv))
+    return res
+
+
+def parse_ledger(text: str) -> ParseResult:
+    """Cash / income ledger: cusip, entry_date, cash, type (interest|principal)[, portfolio, booked_income].
+    A blank booked_income stays blank (None): the screen then derives booked income from book terms."""
+    res = ParseResult("ledger", hashlib.sha256(text.encode()).hexdigest(), 0)
+    rows, errs = _read(text, S.LEDGER_REQUIRED, S.LEDGER_OPTIONAL)
+    res.errors += errs
+    res.row_count = len(rows)
+    for n, row in enumerate(rows, start=1):
+        p = _RowParser(row, n, res.errors)
+        before = len(res.errors)
+        c = p.cusip()
+        d = p.day("entry_date")
+        cash = p.num("cash", lo=-1e12, hi=1e12)
+        kind = p.choice("type", S.LEDGER_TYPES)
+        booked = p.term("booked_income", p.num, lo=-1e12, hi=1e12)
+        portfolio = p.text("portfolio", required=False)
+        if "portfolio" not in row or portfolio is None:
+            portfolio = "DEFAULT"
+        if len(res.errors) == before:
+            res.ledger.append(LedgerEntry(portfolio, c, d, cash, kind, booked))
     return res

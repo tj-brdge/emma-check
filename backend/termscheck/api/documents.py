@@ -16,7 +16,7 @@ router = APIRouter(prefix="/api", tags=["documents"])
 
 
 def doc_json(d: Document) -> dict:
-    return {"id": d.id, "cusip": d.cusip, "source": d.source, "filename": d.filename, "sha256": d.sha256,
+    return {"id": d.id, "cusip": d.cusip, "doc_kind": d.doc_kind, "asset_class": d.asset_class, "source": d.source, "filename": d.filename, "sha256": d.sha256,
             "page_count": d.page_count, "uploaded_by": d.uploaded_by,
             "uploaded_at": d.uploaded_at.isoformat() if d.uploaded_at else None}
 
@@ -32,13 +32,15 @@ def extraction_json(e: Extraction) -> dict:
 
 @router.post("/documents")
 async def upload_document(cusip: str = Form(...), file: UploadFile = File(...),
+                          doc_kind: str = Form("official_statement"), asset_class: str | None = Form(None),
                           user: str = Depends(current_user), session: Session = Depends(get_session),
                           store: UploadSource = Depends(get_store)):
     content = await file.read()
     try:
         doc = register_document(session, store, cusip=cusip.strip().upper(),
-                                filename=file.filename or "official_statement.pdf", content=content, user=user)
-    except ValueError as e:
+                                filename=file.filename or "official_statement.pdf", content=content, user=user,
+                                doc_kind=doc_kind, asset_class=asset_class)
+    except (ValueError, KeyError) as e:
         session.rollback()
         raise HTTPException(422, str(e))
     session.commit()
@@ -85,7 +87,7 @@ def create_extraction(req: ExtractionRequest, user: str = Depends(current_user),
                             model=req.model)
     except ValueError as e:
         session.rollback()
-        raise HTTPException(404, str(e))
+        raise HTTPException(422 if 'data file' in str(e) else 404, str(e))
     session.commit()
     return extraction_json(ex)
 
@@ -104,3 +106,12 @@ def list_extractions(cusip: str | None = None, session: Session = Depends(get_se
     if cusip:
         q = q.where(Extraction.cusip == cusip.upper())
     return [extraction_json(e) for e in session.scalars(q)]
+
+
+@router.get("/cusips/{cusip}/disclosures")
+def cusip_disclosures(cusip: str, session: Session = Depends(get_session)):
+    from ..db.models import DisclosureObservation
+    rows = session.scalars(select(DisclosureObservation).where(DisclosureObservation.cusip == cusip.upper())
+                           .order_by(DisclosureObservation.document_id.desc(), DisclosureObservation.month)).all()
+    return [{"document_id": r.document_id, "month": r.month.isoformat(), "factor": r.factor,
+             "net_coupon": r.net_coupon, "locator": r.locator} for r in rows]

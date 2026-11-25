@@ -90,6 +90,8 @@ class ScreenRun(Base):
     secondary_batch_id: Mapped[int | None] = mapped_column(ForeignKey("upload_batch.id"))
     history_batch_id: Mapped[int | None] = mapped_column(ForeignKey("upload_batch.id"))
     vendor_batch_ids: Mapped[list[Any]] = mapped_column(JSONB, server_default="[]", default=list)
+    ledger_batch_id: Mapped[int | None] = mapped_column(ForeignKey("upload_batch.id"))
+    disclosure_document_ids: Mapped[list[Any]] = mapped_column(JSONB, server_default="[]", default=list)
     config: Mapped[dict[str, Any]] = mapped_column(JSONB)
     started_by: Mapped[str] = mapped_column(String(128))
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -115,6 +117,8 @@ class ScreenFlag(Base):
 class Document(Base):
     __tablename__ = "document"
     id: Mapped[int] = mapped_column(primary_key=True)
+    doc_kind: Mapped[str] = mapped_column(String(32), server_default="official_statement",
+                                          default="official_statement")
     cusip: Mapped[str] = mapped_column(String(9), index=True)
     asset_class: Mapped[str] = mapped_column(String(32), server_default="muni", default="muni", index=True)
     source: Mapped[str] = mapped_column(String(16))
@@ -215,3 +219,31 @@ class AuditEvent(Base):
     prev_hash: Mapped[str] = mapped_column(String(64))
     hash: Mapped[str] = mapped_column(String(64), unique=True)
     __table_args__ = (Index("ix_audit_event_entity", "entity_type", "entity_id"),)
+
+
+class LedgerRow(Base):
+    """Cash / income ledger entry (write-once)."""
+    __tablename__ = "ledger_entry"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    batch_id: Mapped[int] = mapped_column(ForeignKey("upload_batch.id"), index=True)
+    row_no: Mapped[int] = mapped_column(Integer)
+    portfolio: Mapped[str] = mapped_column(String(64))
+    cusip: Mapped[str] = mapped_column(String(9), index=True)
+    entry_date: Mapped[date] = mapped_column(Date)
+    cash: Mapped[float] = mapped_column(MONEY)
+    kind: Mapped[str] = mapped_column(String(16))
+    booked_income: Mapped[float | None] = mapped_column(MONEY)   # NULL = not supplied (never 0)
+
+
+class DisclosureObservation(Base):
+    """A per-period value parsed from a disclosure data file, with its file/row/column locator."""
+    __tablename__ = "disclosure_observation"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    document_id: Mapped[int] = mapped_column(ForeignKey("document.id"), index=True)
+    cusip: Mapped[str] = mapped_column(String(9), index=True)
+    month: Mapped[date] = mapped_column(Date)
+    factor: Mapped[float | None] = mapped_column(Numeric(14, 10, asdecimal=False))
+    net_coupon: Mapped[float | None] = mapped_column(RATE)
+    row_no: Mapped[int] = mapped_column(Integer)
+    locator: Mapped[str] = mapped_column(Text)
+    raw: Mapped[dict[str, Any]] = mapped_column(JSONB)

@@ -22,7 +22,7 @@ def run_screens(data: ScreenInput, config: ScreenConfig | None = None) -> Screen
     data = ScreenInput(as_of=data.as_of, positions=data.positions,
                        primary={c: r for c, r in data.primary.items() if c in held},
                        secondary=data.secondary, history=data.history, vendors=data.vendors,
-                       ledger=data.ledger)
+                       ledger=data.ledger, observations=data.observations)
     ctx = ScreenContext(implied_yields={})
     subsets: dict[str, ScreenInput] = {}
     for key, plugin in all_plugins().items():
@@ -31,7 +31,8 @@ def run_screens(data: ScreenInput, config: ScreenConfig | None = None) -> Screen
                           primary={c: r for c, r in data.primary.items() if r.asset_class == key},
                           secondary=data.secondary, history=data.history, vendors=data.vendors,
                           ledger=[e for e in data.ledger if data.primary.get(e.cusip)
-                                  and data.primary[e.cusip].asset_class == key])
+                                  and data.primary[e.cusip].asset_class == key],
+                          observations=data.observations)
         if sub.primary:
             subsets[key] = sub
             hook = getattr(plugin, "prepare_context", None)   # optional: plugin-computed shared values
