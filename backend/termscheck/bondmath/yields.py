@@ -15,13 +15,29 @@ from .daycount import add_months, period_fraction, year_fraction
 from .models import CashFlow, DayCount
 
 
+def _grid(anchor: date, step: int, k: int) -> date:
+    return add_months(anchor, -step * k)
+
+
 def _grid_index_after(s: date, anchor: date, f: int) -> int:
-    """Largest k such that add_months(anchor, -step*k) > s."""
+    """Largest k such that grid(k) = add_months(anchor, -step*k) > s (computed arithmetically)."""
     step = 12 // f
-    k = 0
-    while add_months(anchor, -step * (k + 1)) > s:
+    months = (anchor.year - s.year) * 12 + (anchor.month - s.month)
+    k = max(months // step, 0)
+    while k > 0 and _grid(anchor, step, k) <= s:
+        k -= 1
+    while _grid(anchor, step, k + 1) > s:
         k += 1
     return k
+
+
+def _grid_index_of(c: date, anchor: date, f: int) -> int | None:
+    step = 12 // f
+    months = (anchor.year - c.year) * 12 + (anchor.month - c.month)
+    if months < 0 or months % step:
+        return None
+    k = months // step
+    return k if _grid(anchor, step, k) == c else None
 
 
 def discount_periods(s: date, c: date, anchor: date, f: int, dc: DayCount) -> float:
@@ -29,18 +45,12 @@ def discount_periods(s: date, c: date, anchor: date, f: int, dc: DayCount) -> fl
     if c <= s:
         return 0.0
     k_s = _grid_index_after(s, anchor, f)
-    g = add_months(anchor, -step * k_s)
-    prev = add_months(anchor, -step * (k_s + 1))
+    g = _grid(anchor, step, k_s)
+    prev = _grid(anchor, step, k_s + 1)
     frac_remaining = 1.0 - period_fraction(dc, prev, g, s, f)
-    # locate c on the grid
-    k = 0
-    while True:
-        gd = add_months(anchor, -step * k)
-        if gd == c:
-            return frac_remaining + (k_s - k)
-        if gd < c or k > k_s:
-            break
-        k += 1
+    k_c = _grid_index_of(c, anchor, f)
+    if k_c is not None and k_c <= k_s:
+        return frac_remaining + (k_s - k_c)
     return year_fraction(dc, s, c) * f  # off-grid fallback
 
 
