@@ -1,49 +1,77 @@
-"""Vendor disagreement: coupon, accrual type, payment schedule, price convention, day count
-or price mismatch between the primary and secondary vendor."""
+"""Vendor disagreement: any term that differs across sources (book of record and every vendor).
+
+Blank-versus-value is reported as a disagreement too (labelled BLANK, never shown as 0); the
+specific blank-in-one-source / zero-in-another pattern additionally raises the null-vs-zero flag.
+"""
 from __future__ import annotations
 
+from datetime import date
+from itertools import combinations
+
+from termscheck.core.records import ABSENT, BLANK, Flag, ScreenInput, SecurityRecord
 from termscheck.screens.base import ScreenContext, clamp_severity
 from termscheck.screens.config import ScreenConfig
-from termscheck.core.records import Flag, ScreenInput
 
 WEIGHTS = {"coupon": 40, "accrual_type": 40, "price_convention": 30, "payment_frequency": 20,
-           "day_count": 15, "maturity_date": 30, "price": 15}
+           "day_count": 15, "maturity_date": 30, "price": 15, "factor": 25, "payment_delay_days": 20,
+           "rate_type": 25, "product_type": 25}
+COMPARED = [k for k in WEIGHTS if k != "price"]
 
 
-def _norm(s: str | None) -> str | None:
-    return None if s is None else s.strip().lower()
+def label(rec: SecurityRecord, name: str):
+    v = getattr(rec, name)
+    if v is None:
+        return "BLANK" if rec.state_of(name) == BLANK else None
+    if isinstance(v, date):
+        return v.isoformat()
+    return v.strip().lower() if isinstance(v, str) else v
+
+
+def differs(a, b) -> bool:
+    if a is None or b is None:            # absent in a source: nothing to compare
+        return False
+    if isinstance(a, float) or isinstance(b, float):
+        if isinstance(a, str) or isinstance(b, str):
+            return True
+        return abs(float(a) - float(b)) > 1e-9
+    return a != b
 
 
 class VendorDisagreementScreen:
+    confidence = 0.8
     rule = "vendor_disagreement"
 
     def run(self, data: ScreenInput, config: ScreenConfig, ctx: ScreenContext) -> list[Flag]:
         flags: list[Flag] = []
-        for cusip, a in data.primary.items():
-            b = data.secondary.get(cusip)
-            if b is None:
+        for cusip in data.primary:
+            recs = data.sources_for(cusip)
+            if len(recs) < 2:
                 continue
             diffs: dict[str, dict] = {}
-            if abs(a.coupon - b.coupon) > 1e-6:
-                diffs["coupon"] = {a.vendor: a.coupon, b.vendor: b.coupon}
-            if _norm(a.accrual_type) != _norm(b.accrual_type):
-                diffs["accrual_type"] = {a.vendor: a.accrual_type, b.vendor: b.accrual_type}
-            if _norm(a.price_convention) != _norm(b.price_convention):
-                diffs["price_convention"] = {a.vendor: a.price_convention, b.vendor: b.price_convention}
-            if a.payment_frequency and b.payment_frequency and a.payment_frequency != b.payment_frequency:
-                diffs["payment_frequency"] = {a.vendor: a.payment_frequency, b.vendor: b.payment_frequency}
-            if a.day_count and b.day_count and _norm(a.day_count) != _norm(b.day_count):
-                diffs["day_count"] = {a.vendor: a.day_count, b.vendor: b.day_count}
-            if a.maturity_date != b.maturity_date:
-                diffs["maturity_date"] = {a.vendor: a.maturity_date.isoformat(),
-                                          b.vendor: b.maturity_date.isoformat()}
-            if abs(a.price - b.price) > config.vendor_price_tolerance:
-                diffs["price"] = {a.vendor: a.price, b.vendor: b.price}
+            for name in COMPARED:
+                vals = {r.vendor: label(r, name) for r in recs}
+                if any(differs(vals[a.vendor], vals[b.vendor]) for a, b in combinations(recs, 2)):
+                    diffs[name] = vals
+            prices = [r.price for r in recs]
+            if max(prices) - min(prices) > config.vendor_price_tolerance:
+                diffs["price"] = {r.vendor: r.price for r in recs}
             if diffs:
                 sev = clamp_severity(15 + 0.8 * sum(WEIGHTS[k] for k in diffs))
                 flags.append(Flag(
                     self.rule, cusip, sev,
-                    "Vendors disagree on " + ", ".join(diffs) + ".",
-                    {"vendors": [a.vendor, b.vendor]},
+                    "Sources disagree on " + ", ".join(
+                        f"{k} ({'; '.join(f'{s}={_fmt(v)}' for s, v in d.items())})" for k, d in diffs.items()) + ".",
+                    {"sources": [r.vendor for r in recs]},
                     {"differences": diffs}))
         return flags
+
+
+def _fmt(v) -> str:
+    if v is None:
+        return "not supplied"
+    if isinstance(v, float):
+        return f"{v:g}"
+    return str(v)
+
+
+__all__ = ["VendorDisagreementScreen", "ABSENT"]

@@ -65,8 +65,9 @@ def test_every_flag_is_fully_recorded(screen_result):
         assert f.rule in ALL_RULES
         assert 0 <= f.severity <= 100
         assert f.inputs and f.computed and f.message
-    sev = [f.severity for f in screen_result.flags]
-    assert sev == sorted(sev, reverse=True)
+    pri = [f.priority for f in screen_result.flags]
+    assert pri == sorted(pri, reverse=True)          # ordered by severity x confidence
+    assert all(0 < f.confidence <= 1 for f in screen_result.flags)
     assert screen_result.config["version"]
 
 

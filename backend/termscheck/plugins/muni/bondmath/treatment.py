@@ -33,6 +33,8 @@ BONDMATH_VERSION = "1.0.0"
 def vendor_accrued(vendor: VendorView, maturity: date, dated: date, as_of: date) -> float:
     """Accrued interest fund accounting would book from vendor terms: vendor coupon on a
     semiannual 30/360 schedule generated backward from maturity."""
+    if vendor.coupon is None:
+        raise ValueError("vendor coupon is blank; booked accrual cannot be derived from it")
     if vendor.coupon <= 0 or as_of <= dated or as_of >= maturity:
         return 0.0
     sched = regular_schedule(dated, maturity, 2)
@@ -42,14 +44,19 @@ def vendor_accrued(vendor: VendorView, maturity: date, dated: date, as_of: date)
     return 100.0 * vendor.coupon * days_30_360(prev, as_of) / 360.0
 
 
-def vendor_terms_as_bond(vendor: VendorView, dated: date, maturity: date) -> InterestTerms:
-    """Interpret vendor fields as a bond: coupon > 0 -> current pay; coupon == 0 -> zero/CAB."""
+def vendor_terms_as_bond(vendor: VendorView, dated: date, maturity: date) -> InterestTerms | None:
+    """Interpret vendor fields as a bond: coupon > 0 -> current pay; coupon == 0 -> zero/CAB;
+    coupon blank -> None (terms unknown)."""
+    if vendor.coupon is None:
+        return None
     if vendor.coupon > 0:
         return InterestTerms(InterestType.CURRENT_PAY, vendor.coupon, dated, maturity)
     return InterestTerms(InterestType.CAPITAL_APPRECIATION, 0.0, dated, maturity)
 
 
-def implied_yield(terms: InterestTerms, full_value: float, as_of: date) -> float | None:
+def implied_yield(terms: InterestTerms | None, full_value: float, as_of: date) -> float | None:
+    if terms is None:
+        return None
     freq = terms.payment_frequency if terms.interest_type is InterestType.CURRENT_PAY else 2
     return yield_from_dirty_price(
         cash_flows(terms, as_of), as_of, full_value,
@@ -66,13 +73,21 @@ def compute_treatment(
     window_start: date | None = None,
 ) -> Treatment:
     notes: list[str] = []
-    label = vendor.accrual_type.strip().lower()
+    label = (vendor.accrual_type or "").strip().lower()
     vendor_recognises_accretion = label in ACCRETING_VENDOR_LABELS
 
-    v_acc = vendor_accrued(vendor, terms.maturity_date, terms.dated_date, as_of)
-    conv = vendor.price_convention.strip().lower()
-    if conv not in ("clean", "dirty"):
+    if vendor.coupon is None:
+        # Explicit, reported assumption: an accounting system cannot accrue from a blank coupon.
+        v_acc = 0.0
+        notes.append("Vendor coupon is BLANK (not zero). No accrual can be booked from a blank "
+                     "coupon; booked accrual is taken as nil for this computation.")
+    else:
+        v_acc = vendor_accrued(vendor, terms.maturity_date, terms.dated_date, as_of)
+    conv = (vendor.price_convention or "").strip().lower()
+    if conv not in ("clean", "dirty", ""):
         raise ValueError(f"unknown price convention {vendor.price_convention!r}")
+    if not conv:
+        notes.append("Vendor price convention is BLANK; the price is treated as the full value.")
     full = vendor.price + v_acc if conv == "clean" else vendor.price
 
     t_acc = accrued_interest(terms, as_of)
@@ -108,6 +123,8 @@ def compute_treatment(
     span = year_fraction(DayCount.THIRTY_360, as_of, horizon) if horizon > as_of else 0.0
     if vendor_recognises_accretion and terms.interest_type in ACCRETING_TYPES:
         inc_vendor = inc_doc
+    elif vendor.coupon is None:
+        inc_vendor = 0.0   # blank coupon: nothing can be booked (noted above)
     elif vendor.coupon > 0:
         inc_vendor = 100.0 * vendor.coupon * span
     elif y_vendor is not None:
@@ -123,7 +140,8 @@ def compute_treatment(
         if vendor_recognises_accretion and terms.interest_type in ACCRETING_TYPES:
             vend_inc = true_inc
         else:
-            vend_inc = 100.0 * vendor.coupon * year_fraction(DayCount.THIRTY_360, ws, min(as_of, terms.maturity_date))
+            booked_rate = 0.0 if vendor.coupon is None else vendor.coupon   # blank: nothing booked (noted)
+            vend_inc = 100.0 * booked_rate * year_fraction(DayCount.THIRTY_360, ws, min(as_of, terms.maturity_date))
         window_usd = (true_inc - vend_inc) * par / 100.0
 
     return Treatment(

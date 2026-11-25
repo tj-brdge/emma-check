@@ -84,9 +84,9 @@ export default function Flags({ runId }: { runId?: number }) {
                   <td>{c.description}</td>
                   <td className="n">{par(c.par)}</td>
                   <td className="n">{c.price.toFixed(3)}</td>
-                  <td>{c.price_convention}</td>
-                  <td className="n">{(c.coupon * 100).toFixed(3)}</td>
-                  <td>{c.accrual_type}</td>
+                  <td>{c.price_convention ?? <span className="blank">BLANK</span>}</td>
+                  <td className="n">{c.coupon === null ? <span className="blank">BLANK</span> : (c.coupon * 100).toFixed(3)}</td>
+                  <td>{c.accrual_type ?? <span className="blank">BLANK</span>}</td>
                   <td className="n">{pct(c.vendor_yield)}</td>
                   <td>{c.rating}</td>
                   <td className="nowrap">

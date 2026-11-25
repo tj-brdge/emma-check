@@ -48,10 +48,11 @@ def approved_rows(session: Session) -> list[dict]:
             rows.append({
                 "finding_id": f.id, "cusip": f.cusip, "description": f.description, "as_of": f.as_of.isoformat(),
                 "portfolio": h.portfolio, "par": f"{h.par:.2f}",
-                "vendor_coupon_pct": f"{vt.coupon * 100:.4f}", "vendor_accrual_type": vt.accrual_type,
+                "vendor_coupon_pct": "BLANK" if vt.coupon is None else f"{vt.coupon * 100:.4f}",
+                "vendor_accrual_type": vt.accrual_type,
                 "vendor_price": f"{vt.price:.6f}", "vendor_price_convention": vt.price_convention,
                 "document_interest_type": terms.get("interest_type"),
-                "document_rate_pct": f"{terms.get('rate', 0) * 100:.4f}",
+                "document_rate_pct": None if terms.get("rate") is None else f"{terms['rate'] * 100:.4f}",
                 "document_compounding": terms.get("compounding_frequency"),
                 "document_day_count": terms.get("day_count"),
                 "document_accrual_start": terms.get("dated_date"), "document_maturity": terms.get("maturity_date"),
@@ -79,7 +80,8 @@ def approved_csv(session: Session, user: str) -> str:
            entity_id=hashlib.sha256(body.encode()).hexdigest()[:16],
            payload={"rows": len(rows), "finding_ids": sorted({r["finding_id"] for r in rows}),
                     "sha256": hashlib.sha256(body.encode()).hexdigest(),
-                    "income_impact_usd": round(sum(float(r["unbooked_income_usd"] or 0) for r in rows), 2)})
+                    "income_impact_usd": round(sum(float(r["unbooked_income_usd"]) for r in rows
+                                                   if r["unbooked_income_usd"] is not None), 2)})
     return body
 
 

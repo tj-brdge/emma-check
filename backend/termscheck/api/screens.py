@@ -19,12 +19,14 @@ class ScreenRunRequest(BaseModel):
     holdings_batch_id: int
     secondary_batch_id: int | None = None
     history_batch_id: int | None = None
+    vendor_batch_ids: list[int] = []
     config: dict | None = None
 
 
 def run_json(r: ScreenRun, with_flags: bool = False) -> dict:
     out = {"id": r.id, "as_of": r.as_of.isoformat(), "holdings_batch_id": r.holdings_batch_id,
            "secondary_batch_id": r.secondary_batch_id, "history_batch_id": r.history_batch_id,
+           "vendor_batch_ids": r.vendor_batch_ids,
            "config": r.config, "started_by": r.started_by,
            "started_at": r.started_at.isoformat() if r.started_at else None,
            "finished_at": r.finished_at.isoformat() if r.finished_at else None,
@@ -36,6 +38,7 @@ def run_json(r: ScreenRun, with_flags: bool = False) -> dict:
 
 def flag_json(f: ScreenFlag) -> dict:
     return {"id": f.id, "run_id": f.run_id, "cusip": f.cusip, "rule": f.rule, "severity": f.severity,
+            "confidence": f.confidence,
             "message": f.message, "inputs": f.inputs, "computed": f.computed}
 
 
@@ -46,6 +49,7 @@ def create_run(req: ScreenRunRequest, user: str = Depends(current_user),
         run = execute_screen_run(session, as_of=req.as_of, holdings_batch_id=req.holdings_batch_id,
                                  secondary_batch_id=req.secondary_batch_id,
                                  history_batch_id=req.history_batch_id,
+                                 vendor_batch_ids=req.vendor_batch_ids,
                                  config_overrides=req.config, user=user)
     except (ValueError, TypeError) as e:
         session.rollback()

@@ -111,12 +111,13 @@ export interface FlaggedCusip {
   description: string;
   par: number;
   price: number;
-  price_convention: string;
-  coupon: number;
-  accrual_type: string;
+  price_convention: string | null;
+  coupon: number | null;
+  accrual_type: string | null;
   vendor_yield: number | null;
-  rating: string;
-  sector: string;
+  rating: string | null;
+  sector: string | null;
+  asset_class: string;
   max_severity: number;
   flags: Flag[];
   document_id: number | null;

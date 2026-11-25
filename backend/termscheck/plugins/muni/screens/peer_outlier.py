@@ -56,6 +56,7 @@ def median_polish(rows: list[tuple[float, tuple[str, ...]]], min_n: int, iters: 
 
 
 class PeerOutlierScreen:
+    confidence = 0.4
     rule = "peer_outlier"
 
     def run(self, data: ScreenInput, config: ScreenConfig, ctx: ScreenContext) -> list[Flag]:
@@ -65,7 +66,8 @@ class PeerOutlierScreen:
             y = rec.vendor_yield if rec.vendor_yield is not None else ctx.implied_yields.get(cusip)
             if y is None:
                 continue
-            key = (fine_band(years_between(data.as_of, rec.maturity_date)), rating_bucket(rec.rating), rec.sector)
+            key = (fine_band(years_between(data.as_of, rec.maturity_date)), rating_bucket(rec.rating),
+                   rec.sector or "unknown")
             rows.append((y, key))
             cusips.append(cusip)
         if len(rows) < 10:

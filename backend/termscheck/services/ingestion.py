@@ -6,9 +6,14 @@ from sqlalchemy.orm import Session
 
 from termscheck.audit import record
 from termscheck.db.models import Holding, PriceHistory, UploadBatch, VendorTerms
+from termscheck.core.records import BLANK
 from termscheck.ingest import ParseResult, parse_holdings, parse_price_history, parse_vendor
 
 KINDS = ("holdings", "vendor_secondary", "price_history")
+RECORD_COLUMNS = ("vendor", "source_role", "source_row", "cusip", "asset_class", "description", "price",
+                  "price_convention", "coupon", "accrual_type", "maturity_date", "issue_date", "rating", "sector",
+                  "state", "payment_frequency", "day_count", "vendor_yield", "product_type", "factor",
+                  "factor_date", "payment_delay_days", "rate_type")
 
 
 class IngestError(Exception):
@@ -26,7 +31,7 @@ class IngestOutcome:
 def ingest_file(session: Session, *, kind: str, filename: str, text: str, user: str,
                 vendor: str | None = None) -> IngestOutcome:
     if kind == "holdings":
-        vendor = vendor or "VendorA"
+        vendor = vendor or "FundAccounting"
         res = parse_holdings(text, vendor)
     elif kind == "vendor_secondary":
         vendor = vendor or "VendorB"
@@ -46,12 +51,8 @@ def ingest_file(session: Session, *, kind: str, filename: str, text: str, user: 
         session.add(Holding(batch_id=batch.id, portfolio=p.portfolio, cusip=p.cusip, par=p.par,
                             acquisition_date=p.acquisition_date))
     for r in res.records:
-        session.add(VendorTerms(
-            batch_id=batch.id, vendor=r.vendor, cusip=r.cusip, description=r.description,
-            price=r.price, price_convention=r.price_convention, coupon=r.coupon,
-            accrual_type=r.accrual_type, maturity_date=r.maturity_date, issue_date=r.issue_date,
-            rating=r.rating, sector=r.sector, state=r.state, payment_frequency=r.payment_frequency,
-            day_count=r.day_count, vendor_yield=r.vendor_yield))
+        session.add(VendorTerms(batch_id=batch.id, field_states=dict(r.states), raw=dict(r.raw),
+                                **{k: getattr(r, k) for k in RECORD_COLUMNS}))
     if res.prices:
         session.bulk_insert_mappings(PriceHistory, [
             dict(batch_id=batch.id, cusip=p.cusip, price_date=p.price_date, price=p.price,
@@ -60,7 +61,8 @@ def ingest_file(session: Session, *, kind: str, filename: str, text: str, user: 
     record(session, actor=user, event_type="upload.accepted", entity_type="upload_batch", entity_id=batch.id,
            payload={"kind": kind, "vendor": vendor, "filename": filename, "sha256": res.sha256,
                     "rows": res.row_count, "positions": len(res.positions), "records": len(res.records),
-                    "prices": len(res.prices)})
+                    "prices": len(res.prices),
+                    "blank_cells": blank_summary(res)})
     return IngestOutcome(batch, res)
 
 
@@ -69,3 +71,13 @@ def record_rejection(session: Session, *, kind: str, filename: str, user: str, r
            payload={"kind": kind, "filename": filename, "sha256": result.sha256, "rows": result.row_count,
                     "error_count": len(result.errors),
                     "errors": [vars(e) for e in result.errors[:50]]})
+
+
+def blank_summary(res: ParseResult) -> dict[str, int]:
+    """Count of blank cells per term field (blank is recorded, never converted to zero)."""
+    out: dict[str, int] = {}
+    for r in res.records:
+        for k, st in r.states.items():
+            if st == BLANK:
+                out[k] = out.get(k, 0) + 1
+    return out

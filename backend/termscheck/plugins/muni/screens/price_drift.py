@@ -47,6 +47,7 @@ def modified_duration(rec: SecurityRecord, d: date, price: float) -> float | Non
 
 
 class PriceDriftScreen:
+    confidence = 0.6
     rule = "price_drift"
 
     def run(self, data: ScreenInput, config: ScreenConfig, ctx: ScreenContext) -> list[Flag]:

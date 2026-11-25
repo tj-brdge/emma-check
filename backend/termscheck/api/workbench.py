@@ -43,6 +43,7 @@ def flagged_cusips(run_id: int, session: Session = Depends(get_session)):
             "cusip": cusip, "description": v.description, "par": pars.get(cusip, 0.0),
             "price": v.price, "price_convention": v.price_convention, "coupon": v.coupon,
             "accrual_type": v.accrual_type, "vendor_yield": v.vendor_yield, "rating": v.rating,
+            "asset_class": v.asset_class, "field_states": v.field_states,
             "sector": v.sector, "max_severity": max(f.severity for f in fl),
             "flags": [{"rule": f.rule, "severity": f.severity, "message": f.message} for f in
                       sorted(fl, key=lambda x: -x.severity)],

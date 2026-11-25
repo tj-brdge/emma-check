@@ -8,6 +8,7 @@ from typing import Any
 
 from termscheck.plugins.muni.bondmath import InterestTerms, InterestType, Treatment, VendorView, compute_treatment
 from termscheck.core.findings import FindingDraft, Metric, PositionResult
+from termscheck.core.display import pct, show
 from termscheck.core.records import Position, SecurityRecord
 
 TYPE_LABEL = {
@@ -20,11 +21,13 @@ FREQ = {0: "simple (no compounding)", 1: "annually", 2: "semiannually", 4: "quar
 
 
 def vendor_interest_type(rec: SecurityRecord) -> str:
-    label = rec.accrual_type.lower()
+    label = (rec.accrual_type or "").lower()
     if label in ("deferred", "deferred_interest"):
         return "deferred_interest"
     if label in ("cab", "accreting", "capital_appreciation"):
         return "capital_appreciation"
+    if rec.coupon is None:
+        return "coupon blank" if rec.is_blank("coupon") else "coupon not supplied"
     if rec.coupon <= 0 or label == "zero":
         return "zero coupon"
     return "current_pay"
@@ -49,8 +52,8 @@ def comparison_rows(rec: SecurityRecord, terms: InterestTerms, citations: dict |
     pays_current = terms.interest_type in (InterestType.CURRENT_PAY, InterestType.CONVERTIBLE_CAB)
     return [
         row("Interest type", vendor_interest_type(rec), terms.interest_type.value, "interest_type"),
-        row("Coupon / accretion rate", f"{rec.coupon * 100:.3f}%", f"{terms.rate * 100:.3f}%",
-            "interest_rate_pct", abs(rec.coupon - terms.rate) < 1e-9),
+        row("Coupon / accretion rate", pct(rec, "coupon"), f"{terms.rate * 100:.3f}%",
+            "interest_rate_pct", rec.coupon is not None and abs(rec.coupon - terms.rate) < 1e-9),
         row("Compounding", "n/a", FREQ.get(terms.compounding_frequency, "?") if not
             terms.interest_type is InterestType.CURRENT_PAY else "n/a", "compounding_frequency", None),
         row("Day count", rec.day_count or "not supplied", terms.day_count.value, "day_count",
@@ -59,7 +62,8 @@ def comparison_rows(rec: SecurityRecord, terms: InterestTerms, citations: dict |
         row("Maturity", rec.maturity_date.isoformat(), terms.maturity_date.isoformat(), "maturity_date"),
         row("Payment frequency", str(rec.payment_frequency or "not supplied"),
             str(terms.payment_frequency) if pays_current else "at maturity", "payment_frequency",
-            (str(rec.payment_frequency) == str(terms.payment_frequency)) if pays_current else rec.coupon == 0),
+            (str(rec.payment_frequency) == str(terms.payment_frequency)) if pays_current
+            else rec.coupon is not None and rec.coupon == 0),
         row("Conversion date", "n/a", terms.conversion_date.isoformat() if terms.conversion_date else "n/a",
             "conversion_date", terms.conversion_date is None),
     ]
@@ -71,7 +75,7 @@ def _treatment_text(t: Treatment, terms: InterestTerms, rec: SecurityRecord) -> 
         return (f"Interest accrues from {terms.dated_date:%b %d, %Y} at {terms.rate:.3%}, compounding "
                 f"{FREQ[terms.compounding_frequency]}, and is paid only at maturity. At {t.as_of:%b %d, %Y} "
                 f"the accreted value is {t.accreted_value:.4f} per 100, of which {t.true_accrued:.4f} is "
-                f"accrued, unpaid interest. The vendor price {rec.price:.3f} ({rec.price_convention}) is a "
+                f"accrued, unpaid interest. The vendor price {rec.price:.3f} ({show(rec, 'price_convention')}) is a "
                 f"full price: correct clean price {t.correct_clean:.4f} plus accrued {t.true_accrued:.4f}. "
                 "Fund accounting should accrue the interest as tax-exempt income and carry it as interest "
                 "receivable, not as unrealized appreciation.")
@@ -107,8 +111,8 @@ def build_finding(rec: SecurityRecord, positions: list[Position], terms: Interes
 
     yv = t.yield_vendor_terms
     vendor_says = (f"{rec.vendor} carries {rec.cusip} as {vendor_interest_type(rec).replace('_', ' ')} "
-                   f"with a {rec.coupon:.3%} coupon (accrual type '{rec.accrual_type}'), price "
-                   f"{rec.price:.3f} labelled {rec.price_convention}. Under those terms the price implies "
+                   f"with coupon {pct(rec, 'coupon')} (accrual type {show(rec, 'accrual_type', chr(39) + '{}' + chr(39))}), price "
+                   f"{rec.price:.3f} labelled {show(rec, 'price_convention')}. Under those terms the price implies "
                    f"a {'n/a' if yv is None else f'{yv:.2%}'} yield"
                    + (f"; the vendor reports {rec.vendor_yield:.2%}." if rec.vendor_yield is not None else ".")
                    + f" Accrued interest booked from vendor terms: {t.vendor_accrued:.4f} per 100.")
@@ -127,7 +131,7 @@ def build_finding(rec: SecurityRecord, positions: list[Position], terms: Interes
                      + (f"At the vendor's price, document terms imply a {yd:.2%} yield." if yd is not None else ""))
 
     vt = vendor_interest_type(rec)
-    if vt == terms.interest_type.value and abs(rec.coupon - terms.rate) > 1e-9:
+    if vt == terms.interest_type.value and rec.coupon is not None and abs(rec.coupon - terms.rate) > 1e-9:
         what = f"coupon {rec.coupon:.3%} vs document {terms.rate:.3%}"
     else:
         what = f"{vt.replace('_', ' ')} vs {TYPE_LABEL[terms.interest_type]}"

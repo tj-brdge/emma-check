@@ -7,11 +7,14 @@ from termscheck.core.records import Flag, ScreenInput
 
 
 class YieldCouponScreen:
+    confidence = 0.7
     rule = "yield_coupon_impossibility"
 
     def run(self, data: ScreenInput, config: ScreenConfig, ctx: ScreenContext) -> list[Flag]:
         flags: list[Flag] = []
         for cusip, rec in data.primary.items():
+            if rec.coupon is None or rec.issue_date is None:
+                continue   # unknown terms: reported by the null-vs-zero / frequency screens instead
             y = ctx.implied_yields.get(cusip)
             inputs = {"price": rec.price, "price_convention": rec.price_convention,
                       "coupon": rec.coupon, "vendor_yield": rec.vendor_yield,

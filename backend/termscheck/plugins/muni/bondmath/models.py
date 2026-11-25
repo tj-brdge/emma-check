@@ -74,9 +74,9 @@ class VendorView:
     """What a vendor / security master says about the bond."""
 
     price: float                    # per 100 par
-    price_convention: str           # "clean" | "dirty"
-    coupon: float                   # annual decimal
-    accrual_type: str               # vendor label, normalized lower-case
+    price_convention: str | None    # "clean" | "dirty" | None (blank)
+    coupon: float | None            # annual decimal; None = blank (unknown, NOT zero)
+    accrual_type: str | None        # vendor label, normalized lower-case
 
 
 @dataclass(frozen=True)

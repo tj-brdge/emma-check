@@ -14,13 +14,16 @@ def vendor_view(rec: SecurityRecord) -> VendorView:
 
 def vendor_full_value(rec: SecurityRecord, as_of: date, price: float | None = None) -> float:
     p = rec.price if price is None else price
-    if rec.price_convention.lower() == "clean":
+    if (rec.price_convention or "").lower() == "clean":
         return p + vendor_accrued(vendor_view(rec), rec.maturity_date, rec.issue_date, as_of)
     return p
 
 
 def vendor_implied_yield(rec: SecurityRecord, as_of: date, price: float | None = None) -> float | None:
-    """Yield implied by the price if the vendor's stated terms were true."""
+    """Yield implied by the price if the vendor's stated terms were true. None when the terms
+    needed for the calculation are blank (a blank coupon is unknown, not zero)."""
+    if rec.coupon is None or rec.issue_date is None:
+        return None
     if as_of >= rec.maturity_date or rec.issue_date >= rec.maturity_date:
         return None
     terms = vendor_terms_as_bond(vendor_view(rec), rec.issue_date, rec.maturity_date)

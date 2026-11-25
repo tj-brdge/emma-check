@@ -118,3 +118,4 @@ textarea.f { width: 100%; min-height: 52px; resize: vertical; }
   .kpi { min-width: 0; flex: 1 1 45%; }
   .kpi.hero { flex-basis: 100%; }
 }
+.blank { font: 600 9.5px var(--mono); color: var(--warn); border: 1px dashed #e3c08f; padding: 0 3px; }

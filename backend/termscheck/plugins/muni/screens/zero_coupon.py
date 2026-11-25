@@ -9,12 +9,13 @@ from termscheck.core.records import Flag, ScreenInput
 
 
 class ZeroCouponScreen:
+    confidence = 0.75
     rule = "zero_coupon_sanity"
 
     def run(self, data: ScreenInput, config: ScreenConfig, ctx: ScreenContext) -> list[Flag]:
         flags: list[Flag] = []
         for cusip, rec in data.primary.items():
-            if rec.coupon > 0:
+            if rec.coupon is None or rec.coupon > 0:   # blank is not zero
                 continue
             years = years_between(data.as_of, rec.maturity_date)
             if years < config.zero_min_years or rec.price < config.zero_near_par_price:

@@ -39,25 +39,36 @@ class Holding(Base):
 
 
 class VendorTerms(Base):
+    """One source's terms for a CUSIP. Term columns are NULL when the source left them blank or
+    did not supply them; ``field_states`` records which ("blank" vs "absent"), ``raw`` the text."""
     __tablename__ = "vendor_terms"
     id: Mapped[int] = mapped_column(primary_key=True)
     batch_id: Mapped[int] = mapped_column(ForeignKey("upload_batch.id"), index=True)
     vendor: Mapped[str] = mapped_column(String(64))
+    source_role: Mapped[str] = mapped_column(String(8), server_default="vendor", default="vendor")
+    source_row: Mapped[int | None] = mapped_column(Integer)
     cusip: Mapped[str] = mapped_column(String(9), index=True)
     asset_class: Mapped[str] = mapped_column(String(32), server_default="muni", default="muni", index=True)
     description: Mapped[str] = mapped_column(Text)
     price: Mapped[float] = mapped_column(PRICE)
-    price_convention: Mapped[str] = mapped_column(String(8))
-    coupon: Mapped[float] = mapped_column(RATE)
-    accrual_type: Mapped[str] = mapped_column(String(32))
+    price_convention: Mapped[str | None] = mapped_column(String(8))
+    coupon: Mapped[float | None] = mapped_column(RATE)
+    accrual_type: Mapped[str | None] = mapped_column(String(32))
     maturity_date: Mapped[date] = mapped_column(Date)
-    issue_date: Mapped[date] = mapped_column(Date)
-    rating: Mapped[str] = mapped_column(String(16))
-    sector: Mapped[str] = mapped_column(String(64))
-    state: Mapped[str] = mapped_column(String(8))
+    issue_date: Mapped[date | None] = mapped_column(Date)
+    rating: Mapped[str | None] = mapped_column(String(16))
+    sector: Mapped[str | None] = mapped_column(String(64))
+    state: Mapped[str | None] = mapped_column(String(8))
     payment_frequency: Mapped[int | None] = mapped_column(Integer)
     day_count: Mapped[str | None] = mapped_column(String(16))
     vendor_yield: Mapped[float | None] = mapped_column(RATE)
+    product_type: Mapped[str | None] = mapped_column(String(16))
+    factor: Mapped[float | None] = mapped_column(Numeric(14, 10, asdecimal=False))
+    factor_date: Mapped[date | None] = mapped_column(Date)
+    payment_delay_days: Mapped[int | None] = mapped_column(Integer)
+    rate_type: Mapped[str | None] = mapped_column(String(16))
+    field_states: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default="{}", default=dict)
+    raw: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default="{}", default=dict)
 
 
 class PriceHistory(Base):
@@ -78,6 +89,7 @@ class ScreenRun(Base):
     holdings_batch_id: Mapped[int] = mapped_column(ForeignKey("upload_batch.id"))
     secondary_batch_id: Mapped[int | None] = mapped_column(ForeignKey("upload_batch.id"))
     history_batch_id: Mapped[int | None] = mapped_column(ForeignKey("upload_batch.id"))
+    vendor_batch_ids: Mapped[list[Any]] = mapped_column(JSONB, server_default="[]", default=list)
     config: Mapped[dict[str, Any]] = mapped_column(JSONB)
     started_by: Mapped[str] = mapped_column(String(128))
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -93,6 +105,7 @@ class ScreenFlag(Base):
     cusip: Mapped[str] = mapped_column(String(9), index=True)
     rule: Mapped[str] = mapped_column(String(64))
     severity: Mapped[int] = mapped_column(Integer)
+    confidence: Mapped[float] = mapped_column(Numeric(4, 3, asdecimal=False), server_default="0.5", default=0.5)
     message: Mapped[str] = mapped_column(Text)
     inputs: Mapped[dict[str, Any]] = mapped_column(JSONB)
     computed: Mapped[dict[str, Any]] = mapped_column(JSONB)
