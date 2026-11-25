@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: termscheck
+          POSTGRES_PASSWORD: termscheck
+          POSTGRES_DB: termscheck
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U termscheck"
+          --health-interval 2s --health-timeout 5s --health-retries 30
+    env:
+      TERMSCHECK_DATABASE_URL: postgresql+psycopg://termscheck:termscheck@localhost:5432/termscheck
+      TERMSCHECK_TEST_DATABASE_URL: postgresql+psycopg://termscheck:termscheck@localhost:5432/termscheck_test
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install locked dependencies (hash-verified)
+        run: |
+          python -m pip install --upgrade pip
+          pip install --require-hashes -r requirements-dev.lock
+          pip install --no-deps -e .
+      - name: Create test database
+        run: PGPASSWORD=termscheck psql -h localhost -U termscheck -d termscheck -c "CREATE DATABASE termscheck_test"
+      - name: Migrations - upgrade, full downgrade, upgrade again
+        run: |
+          alembic upgrade head
+          alembic downgrade base
+          alembic upgrade head
+      - name: Migrations - models match migrations (no drift)
+        run: alembic check
+      - name: Tests (unit, database and API; live Anthropic tests excluded)
+        run: pytest -q
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - name: Typecheck and production build
+        run: npm run build
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the compose images
+        run: docker compose build
+
+  live-extraction:
+    # Real Anthropic API calls cost money: run on demand only, with the key stored as a repository secret.
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: |
+          pip install --require-hashes -r requirements-dev.lock
+          pip install --no-deps -e .
+      - run: pytest -q -m live tests/test_extraction.py
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

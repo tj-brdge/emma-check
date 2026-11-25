@@ -54,10 +54,33 @@ cd ../frontend && npm install && npm run dev   # http://localhost:5173, proxies 
 ### Tests
 
 ```bash
-cd backend && pytest                 # 205 tests; DB tests use TERMSCHECK_TEST_DATABASE_URL
+cd backend && pytest                 # 227 tests; DB tests use TERMSCHECK_TEST_DATABASE_URL
 pytest -m live                       # real extraction against the sample OS (needs ANTHROPIC_API_KEY)
 cd ../frontend && npm run typecheck
 ```
+
+Database tests fail (rather than skip) when PostgreSQL is unreachable; set
+`TERMSCHECK_ALLOW_NO_DB=1` to skip them deliberately.
+
+### Dependencies and CI
+
+`backend/pyproject.toml` states the supported version ranges. The exact, hash-pinned set lives in
+`backend/requirements.lock` (runtime, used by the Docker image) and `backend/requirements-dev.lock`
+(tests, used by CI). Install with `pip install --require-hashes -r requirements-dev.lock` then
+`pip install --no-deps -e .`. To change a dependency, edit `pyproject.toml` and regenerate both
+(universal, so the same lock works on Intel and Apple Silicon Docker builds):
+
+```bash
+cd backend
+uv pip compile pyproject.toml --universal --generate-hashes --python-version 3.12 -o requirements.lock
+uv pip compile pyproject.toml --extra dev --universal --generate-hashes --python-version 3.12 -o requirements-dev.lock
+```
+
+`.github/workflows/ci.yml` runs on every push and pull request: backend tests against PostgreSQL;
+migrations upgraded, fully downgraded and upgraded again; `alembic check` (models match
+migrations); the frontend typecheck and build; and the Docker image build. The live Anthropic
+extraction tests run only when triggered manually (they need the `ANTHROPIC_API_KEY` repository
+secret and cost money).
 
 ## Workflow
 
@@ -259,7 +282,14 @@ audit chain, tamper and deletion detection, database-level immutability.
 
 ## Limitations (prototype)
 
-- Identity is an `X-User` header chosen in the UI; there is no authentication.
+- Identity is an `X-User` header chosen in the UI; there is no authentication, and the audit
+  chain proves records were not altered, not who made them. Docker publishes the UI and API on
+  127.0.0.1 only. Before anyone else uses it, put single sign-on in front (e.g. oauth2-proxy),
+  take the user from the verified identity, require it on every endpoint and add TLS.
+- Upload limits: PDFs 50 MB and 1,500 pages, CSV / disclosure files 20 MB (settings
+  `TERMSCHECK_MAX_PDF_BYTES`, `TERMSCHECK_MAX_DATA_BYTES`, `TERMSCHECK_MAX_PDF_PAGES`). Scanned PDFs
+  with no text layer are recorded as `needs_ocr` without a model call; run them through OCR
+  (e.g. `ocrmypdf`) first.
 - Extraction runs synchronously in the request (can take tens of seconds per document).
 - Yields use compound discounting throughout (G-33 uses simple interest inside the final
   coupon period) and are to maturity, not to call.

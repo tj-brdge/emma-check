@@ -2,9 +2,11 @@
 FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
 WORKDIR /app/backend
+COPY backend/requirements.lock ./
+RUN pip install --require-hashes -r requirements.lock      # exact, hash-verified dependency set
 COPY backend/pyproject.toml ./
 COPY backend/termscheck ./termscheck
-RUN pip install .
+RUN pip install --no-deps .
 COPY backend/alembic.ini ./
 COPY backend/alembic ./alembic
 COPY backend/scripts ./scripts
