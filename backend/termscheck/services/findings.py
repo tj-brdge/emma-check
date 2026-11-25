@@ -34,6 +34,9 @@ def create_finding(session: Session, *, screen_run_id: int, extraction_id: int, 
         select(ScreenFlag).where(ScreenFlag.run_id == run.id, ScreenFlag.cusip == ex.cusip))})
     plugin = get_plugin(ex.asset_class)
     terms = plugin.terms_from_json(ex.interest_terms)
+    reason = plugin.unsupported_reason(to_record(vt), terms)
+    if reason:
+        raise FindingError(f"unsupported: {reason}")
     cites = citation_index(ex)
     draft = plugin.build_finding(to_record(vt), [Position(h.portfolio, h.cusip, h.par, h.acquisition_date)
                                                  for h in holdings], terms, run.as_of, citations=cites, rules=rules,

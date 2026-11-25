@@ -33,6 +33,10 @@ class YieldCouponScreen:
                 continue
             if rec.vendor_yield is not None:
                 gap = (rec.vendor_yield - y) * 1e4
+                if config.premium_one_sided and rec.price > 100 and rec.coupon > 0 and gap < 0:
+                    # Premium callable munis are quoted to the call (yield to worst), which is lower than
+                    # the yield to maturity computed here; that gap is expected, not a terms defect.
+                    continue
                 if abs(gap) > config.max_yield_gap_bp:
                     low = rec.coupon <= 0.02
                     flags.append(Flag(

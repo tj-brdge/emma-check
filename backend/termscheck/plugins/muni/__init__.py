@@ -62,6 +62,15 @@ class MuniPlugin:
             first_coupon_date=dt("first_coupon_date"), first_compounding_date=dt("first_compounding_date"),
             conversion_date=dt("conversion_date"))
 
+    UNSUPPORTED_ACCRUAL = {"floating": "floating-rate", "variable": "variable-rate", "step": "step-coupon"}
+
+    def unsupported_reason(self, record, terms) -> str | None:
+        label = (record.accrual_type or "").lower()
+        if label in self.UNSUPPORTED_ACCRUAL:
+            return (f"{self.UNSUPPORTED_ACCRUAL[label]} munis are not implemented (fixed current-pay, CAB, "
+                    "deferred-interest and convertible CAB only); review this security manually")
+        return None
+
     def build_finding(self, record, positions, terms, as_of, *, citations=None, rules=None, ledger=None,
                       context=None):
         return build_finding(record, positions, terms, as_of, citations=citations, rules=rules)

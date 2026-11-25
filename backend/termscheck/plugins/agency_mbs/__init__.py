@@ -45,6 +45,18 @@ class AgencyMBSPlugin:
         terms_from_json(data)        # validate
         return dict(data)
 
+    SUPPORTED_PRODUCTS = {"pass_through", "arm"}
+
+    def unsupported_reason(self, record, terms) -> str | None:
+        for source, product in (("book of record", record.product_type),
+                                ("offering document", (terms or {}).get("product_type"))):
+            if product and product not in self.SUPPORTED_PRODUCTS:
+                what = {"cmo": "CMO tranches", "io": "interest-only strips", "po": "principal-only strips",
+                        "bond": "non-pool agency bonds"}.get(product, f"product type {product!r}")
+                return (f"{what} are not implemented ({source} says {product}); only pass-through and ARM "
+                        "pools are computed - review this security manually")
+        return None
+
     def build_finding(self, record, positions, terms, as_of, *, citations=None, rules=None, ledger=None,
                       context=None):
         ctx = context or {}

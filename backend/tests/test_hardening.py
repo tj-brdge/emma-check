@@ -125,3 +125,45 @@ def test_scanned_pdf_marked_needs_ocr_without_model_call(client, screened, datas
     assert r["extraction"]["status"] == "needs_ocr" and "OCR" in r["error"] and r["finding"] is None
     ev = client.get("/api/audit?event_type=extraction.needs_ocr").json()
     assert len(ev) == 1
+
+
+# ---------------------------------------------------------------- unsupported cases and callables
+def test_unsupported_products_are_refused():
+    from dataclasses import replace
+
+    from termscheck.core.plugin import get_plugin
+    from termscheck.plugins.agency_mbs.synthetic import generate
+    mbs = get_plugin("agency_mbs")
+    rec = generate().holdings[0].book
+    assert mbs.unsupported_reason(rec, {"product_type": "pass_through"}) is None
+    for p in ("cmo", "io", "po"):
+        assert "not implemented" in mbs.unsupported_reason(replace(rec, product_type=p), {})
+    assert "offering document says io" in mbs.unsupported_reason(rec, {"product_type": "io"})
+    from termscheck.plugins.muni.synthetic import generate as gen_muni
+    muni = get_plugin("muni")
+    m = gen_muni().holdings[0].vendor_a
+    assert muni.unsupported_reason(m, None) is None
+    assert "floating-rate" in muni.unsupported_reason(replace(m, accrual_type="floating"), None)
+
+
+def test_mbs_tool_refuses_unsupported_products():
+    from termscheck.tools import compute_mbs_treatment
+    with pytest.raises(ValueError, match="unsupported product"):
+        compute_mbs_treatment({}, {"cusip": "X"}, 1.0, "2026-11-30", [], product_type="cmo")
+
+
+def test_premium_callable_quoted_to_call_not_flagged():
+    from datetime import date
+
+    from termscheck.core.records import Position, ScreenInput, SecurityRecord
+    from termscheck.screens import run_screens
+    rec = SecurityRecord(vendor="A", cusip="TEST00001", description="callable", price=110.0, price_convention="clean",
+                         coupon=0.05, accrual_type="fixed", maturity_date=date(2046, 6, 1), issue_date=date(2016, 6, 1),
+                         rating="AA", sector="General Obligation", state="NY", payment_frequency=2, day_count="30/360",
+                         vendor_yield=0.025)    # yield to a 2029 call; YTM at 110 is ~4.2%
+    data = ScreenInput(date(2026, 11, 30), [Position("P", rec.cusip, 1e6)], {rec.cusip: rec})
+    assert not [f for f in run_screens(data).flags if f.rule == "yield_coupon_impossibility"]
+    from dataclasses import replace
+    high = replace(rec, vendor_yield=0.09)        # above the YTM: still a real inconsistency
+    data = ScreenInput(date(2026, 11, 30), [Position("P", rec.cusip, 1e6)], {rec.cusip: high})
+    assert [f for f in run_screens(data).flags if f.rule == "yield_coupon_impossibility"]

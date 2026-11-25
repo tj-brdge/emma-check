@@ -271,6 +271,11 @@ audit chain, tamper and deletion detection, database-level immutability.
 - Pool disclosure layouts: no real Freddie Mac file was available; real layouts need entries
   in the column mapping. Factor/rate history before the disclosure window is not reconstructed.
 - MBS: 30/360 monthly accrual only; no business-day calendar for payment dates; CMO tranches and
-  IO/PO math are out of scope (PO/IO are recognised by product type so they are not mis-flagged).
+  IO/PO math are out of scope. Findings are refused (with the reason) for CMO, IO and PO products
+  and for floating, variable and step-coupon munis, instead of being computed with math that does
+  not apply. A principal-only strip's zero coupon is flagged only at low severity.
+- Callable munis: yields are to maturity. For premium coupon bonds the yield screen is one-sided
+  (a vendor yield below the YTM is treated as quoting to call), so real yield-to-worst quotes do
+  not raise false flags; a vendor yield above the YTM is still checked.
 - Cash reconciliation compares against today's book record; for variable-rate securities only
   the current rate regime is reconciled because historical book rates are not known.

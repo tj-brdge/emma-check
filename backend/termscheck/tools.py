@@ -51,7 +51,8 @@ def compute_bond_treatment(interest_terms: dict[str, Any], vendor_price: float, 
 
 def compute_mbs_treatment(interest_terms: dict[str, Any], book: dict[str, Any], original_face: float, as_of: str,
                           observations: list[dict[str, Any]], ledger: list[dict[str, Any]] | None = None,
-                          portfolio: str = "DEFAULT", acquisition_date: str | None = None) -> dict[str, Any]:
+                          portfolio: str = "DEFAULT", acquisition_date: str | None = None,
+                          product_type: str = "pass_through") -> dict[str, Any]:
     """Agency MBS income treatment for one position.
 
     interest_terms: the `interest_terms` from extract_official_statement_terms(..., asset_class="agency_mbs").
@@ -59,6 +60,8 @@ def compute_mbs_treatment(interest_terms: dict[str, Any], book: dict[str, Any], 
     price_convention}. observations: [{month: "YYYY-MM-01", factor, net_coupon (decimal or null)}].
     ledger: [{date, cash, type: "interest"|"principal", booked_income?}].
     """
+    if product_type not in ("pass_through", "arm"):
+        raise ValueError(f"unsupported product type {product_type!r}: only pass-through and ARM pools are computed")
     from termscheck.core.records import BLANK, LedgerEntry, PeriodObservation, Position, SecurityRecord
     from termscheck.plugins.agency_mbs.extraction.spec import terms_from_json
     from termscheck.plugins.agency_mbs.treatment import compute_mbs_treatment as _compute

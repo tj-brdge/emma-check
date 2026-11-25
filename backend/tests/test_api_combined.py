@@ -83,3 +83,16 @@ def test_m02_fixed_rate_finding(client, combined_run, mbs_dataset):
     assert "coupon 3.500%" in f["headline"] and "5.500%" in f["headline"]
     # 12 months booked at 3.5% instead of 5.5%: understatement ~ 2/5.5 of the interest earned
     assert f["income_impact_usd"] > 0
+
+
+def test_unsupported_product_refused_with_reason(client, mbs_dataset):
+    """The book says the security is a CMO tranche: the finding is refused with the reason, not computed."""
+    m02 = next(x for x in mbs_dataset.defects if x.defect_id.startswith("M02")).cusip
+    rows = (SYN / "mbs_holdings.csv").read_text().splitlines()
+    rows = [rows[0]] + [r.replace(",pass_through,", ",cmo,") for r in rows[1:] if m02 in r]
+    hid = client.post("/api/uploads/holdings", files={"file": ("h.csv", "\n".join(rows) + "\n", "text/csv")}).json()
+    run = client.post("/api/screen-runs", json={"as_of": "2026-11-30", "holdings_batch_id": hid["batch"]["id"]}).json()
+    r = client.post(f"/api/screen-runs/{run['id']}/cusips/{m02}/official-statement",
+                    files={"file": ("supp.pdf", (OS / f"SUPP_{m02}.pdf").read_bytes(), "application/pdf")}).json()
+    assert r["extraction"]["status"] == "ok" and r["finding"] is None
+    assert r["error"].startswith("unsupported: CMO tranches are not implemented")

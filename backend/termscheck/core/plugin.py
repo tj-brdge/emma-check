@@ -28,6 +28,11 @@ class AssetClassPlugin(Protocol):
 
     def terms_from_json(self, data: dict[str, Any]) -> Any: ...
 
+    def unsupported_reason(self, record: SecurityRecord, terms: Any) -> str | None:
+        """Why this security cannot be computed by this plugin (None if supported). A finding is
+        refused with this reason rather than produced from math that does not apply."""
+        ...
+
     def build_finding(self, record: SecurityRecord, positions: list[Position], terms: Any, as_of: date, *,
                       citations: dict[str, dict] | None = None, rules: list[str] | None = None,
                       ledger: list[LedgerEntry] | None = None, context: dict[str, Any] | None = None

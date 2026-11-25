@@ -11,6 +11,7 @@ class ScreenConfig:
     # yield / coupon impossibility
     max_yield_gap_bp: float = 150.0          # |vendor yield - implied yield| that triggers
     min_plausible_yield: float = -0.005      # implied yields below this are impossible for munis
+    premium_one_sided: bool = True           # premium bonds: a vendor yield BELOW the YTM is quoting to call
     # price drift
     drift_min_points: int = 6
     drift_min_span_days: int = 90
