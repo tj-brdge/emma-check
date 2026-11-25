@@ -158,7 +158,7 @@ def _clean_holding(g: _Gen, portfolio: str) -> SyntheticHolding:
     maturity = date(mat_year, m, d)
     orig_term = r.choice([10, 15, 20, 25, 30])
     issue = add_months(maturity, -12 * orig_term)
-    if issue > AS_OF - timedelta(days=200):
+    if issue > AS_OF - timedelta(days=400):
         issue = add_months(maturity, -12 * (int((maturity - AS_OF).days / 365.25) + r.randint(1, 5)))
     yrs = (maturity - AS_OF).days / 365.25
     y = curve_yield(yrs) + rspread + SECTORS[sector] + r.gauss(0, 0.0008)

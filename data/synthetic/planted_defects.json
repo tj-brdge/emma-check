@@ -1,0 +1,249 @@
+{
+  "seed": 20261125,
+  "as_of": "2026-11-30",
+  "holdings": 200,
+  "defects": [
+    {
+      "defect_id": "D01-deferred-zero-clean",
+      "cusip": "FQ4TWLB23",
+      "expected_rules": [
+        "yield_coupon_impossibility",
+        "zero_coupon_sanity",
+        "price_drift"
+      ],
+      "description": "Mirrors the motivating case: vendor coupon 0, price labelled clean, but the bond accrues 11% compounded semiannually and pays all interest at maturity; ~11% yield.",
+      "true_terms": {
+        "interest_type": "deferred_interest",
+        "rate": 0.11,
+        "dated_date": "2019-07-01",
+        "maturity_date": "2034-07-01",
+        "day_count": "30/360",
+        "payment_frequency": 2,
+        "compounding_frequency": 2,
+        "first_coupon_date": null,
+        "first_compounding_date": null,
+        "conversion_date": null
+      }
+    },
+    {
+      "defect_id": "D02-coupon-understated",
+      "cusip": "WVYJ63718",
+      "expected_rules": [
+        "yield_coupon_impossibility"
+      ],
+      "description": "Vendor coupon 1.00% vs document 5.75% current pay; reported yield 6.25% impossible for a 1% coupon at this price.",
+      "true_terms": {
+        "interest_type": "current_pay",
+        "rate": 0.0575,
+        "dated_date": "2018-12-01",
+        "maturity_date": "2041-12-01",
+        "day_count": "30/360",
+        "payment_frequency": 2,
+        "compounding_frequency": 2,
+        "first_coupon_date": null,
+        "first_compounding_date": null,
+        "conversion_date": null
+      }
+    },
+    {
+      "defect_id": "D03-deferred-drift",
+      "cusip": "W7FRWMA01",
+      "expected_rules": [
+        "price_drift"
+      ],
+      "description": "Deferred-interest bond (6% compounded semiannually) carried as zero coupon with no vendor yield, priced below 95 so the zero-coupon screen is silent; the 'clean' price climbs with the embedded accrual.",
+      "true_terms": {
+        "interest_type": "deferred_interest",
+        "rate": 0.06,
+        "dated_date": "2024-06-01",
+        "maturity_date": "2033-06-01",
+        "day_count": "30/360",
+        "payment_frequency": 2,
+        "compounding_frequency": 2,
+        "first_coupon_date": null,
+        "first_compounding_date": null,
+        "conversion_date": null
+      }
+    },
+    {
+      "defect_id": "D04-credit-outlier",
+      "cusip": "QRNKWWD54",
+      "expected_rules": [
+        "peer_outlier"
+      ],
+      "description": "Terms are correct; yield 9.5% vs A-rated hospital peers near 5% (credit event, not a terms defect - expected reviewer rejection).",
+      "true_terms": {
+        "interest_type": "current_pay",
+        "rate": 0.05,
+        "dated_date": "2017-06-01",
+        "maturity_date": "2039-06-01",
+        "day_count": "30/360",
+        "payment_frequency": 2,
+        "compounding_frequency": 2,
+        "first_coupon_date": null,
+        "first_compounding_date": null,
+        "conversion_date": null
+      }
+    },
+    {
+      "defect_id": "D05-price-typo",
+      "cusip": "B48SJBE44",
+      "expected_rules": [
+        "peer_outlier"
+      ],
+      "description": "Price mis-keyed as 72.000 (fair ~103); no vendor yield, implied yield far above peers.",
+      "true_terms": {
+        "interest_type": "current_pay",
+        "rate": 0.04,
+        "dated_date": "2020-09-01",
+        "maturity_date": "2034-09-01",
+        "day_count": "30/360",
+        "payment_frequency": 2,
+        "compounding_frequency": 2,
+        "first_coupon_date": null,
+        "first_compounding_date": null,
+        "conversion_date": null
+      }
+    },
+    {
+      "defect_id": "D06-vendor-coupon",
+      "cusip": "BV0S0WF03",
+      "expected_rules": [
+        "vendor_disagreement"
+      ],
+      "description": "Vendor B carries coupon 0 / zero accrual; vendor A and document say 5% current pay.",
+      "true_terms": {
+        "interest_type": "current_pay",
+        "rate": 0.05,
+        "dated_date": "2019-06-01",
+        "maturity_date": "2044-06-01",
+        "day_count": "30/360",
+        "payment_frequency": 2,
+        "compounding_frequency": 2,
+        "first_coupon_date": null,
+        "first_compounding_date": null,
+        "conversion_date": null
+      }
+    },
+    {
+      "defect_id": "D07-vendor-convention",
+      "cusip": "WE5GZ8695",
+      "expected_rules": [
+        "vendor_disagreement"
+      ],
+      "description": "Vendor B labels price dirty and accrual deferred; vendor A clean / fixed.",
+      "true_terms": {
+        "interest_type": "current_pay",
+        "rate": 0.04,
+        "dated_date": "2016-03-01",
+        "maturity_date": "2036-03-01",
+        "day_count": "30/360",
+        "payment_frequency": 2,
+        "compounding_frequency": 2,
+        "first_coupon_date": null,
+        "first_compounding_date": null,
+        "conversion_date": null
+      }
+    },
+    {
+      "defect_id": "D08-vendor-schedule",
+      "cusip": "BFV8NF121",
+      "expected_rules": [
+        "vendor_disagreement"
+      ],
+      "description": "Vendor B pays annually; vendor A semiannually.",
+      "true_terms": {
+        "interest_type": "current_pay",
+        "rate": 0.05,
+        "dated_date": "2022-01-01",
+        "maturity_date": "2047-01-01",
+        "day_count": "30/360",
+        "payment_frequency": 2,
+        "compounding_frequency": 2,
+        "first_coupon_date": null,
+        "first_compounding_date": null,
+        "conversion_date": null
+      }
+    },
+    {
+      "defect_id": "D09-zero-near-par",
+      "cusip": "21A0SG596",
+      "expected_rules": [
+        "zero_coupon_sanity"
+      ],
+      "description": "Deferred-interest bond (4.5% compounded) carried as zero coupon priced above par with 13 years to maturity; no vendor yield.",
+      "true_terms": {
+        "interest_type": "deferred_interest",
+        "rate": 0.045,
+        "dated_date": "2025-01-01",
+        "maturity_date": "2040-01-01",
+        "day_count": "30/360",
+        "payment_frequency": 2,
+        "compounding_frequency": 2,
+        "first_coupon_date": null,
+        "first_compounding_date": null,
+        "conversion_date": null
+      }
+    },
+    {
+      "defect_id": "D10-deferred-low-coupon",
+      "cusip": "VC8UR2F15",
+      "expected_rules": [
+        "yield_coupon_impossibility"
+      ],
+      "description": "Deferred-interest bond (7% compounded) carried with a 2% coupon at ~196; a 2% coupon cannot yield 7.2% at that price.",
+      "true_terms": {
+        "interest_type": "deferred_interest",
+        "rate": 0.07,
+        "dated_date": "2016-06-01",
+        "maturity_date": "2036-06-01",
+        "day_count": "30/360",
+        "payment_frequency": 2,
+        "compounding_frequency": 2,
+        "first_coupon_date": null,
+        "first_compounding_date": null,
+        "conversion_date": null
+      }
+    },
+    {
+      "defect_id": "D11-cab-as-current-pay",
+      "cusip": "URCHB0C52",
+      "expected_rules": [
+        "yield_coupon_impossibility"
+      ],
+      "description": "CAB (5.25% accreting) carried as a 5.25% current-pay bond; fund books coupon accrual that does not exist (income overstated).",
+      "true_terms": {
+        "interest_type": "capital_appreciation",
+        "rate": 0.0525,
+        "dated_date": "2015-08-01",
+        "maturity_date": "2036-08-01",
+        "day_count": "30/360",
+        "payment_frequency": 2,
+        "compounding_frequency": 2,
+        "first_coupon_date": null,
+        "first_compounding_date": null,
+        "conversion_date": null
+      }
+    },
+    {
+      "defect_id": "D12-ccab-as-zero",
+      "cusip": "RQ6MC4587",
+      "expected_rules": [
+        "peer_outlier"
+      ],
+      "description": "Convertible CAB (5.5% accreting to 2031 conversion, then current pay) carried as a zero-coupon bond with no vendor yield: implied yield ~1.4% vs peers ~5.5%.",
+      "true_terms": {
+        "interest_type": "convertible_cab",
+        "rate": 0.055,
+        "dated_date": "2021-12-01",
+        "maturity_date": "2045-12-01",
+        "day_count": "30/360",
+        "payment_frequency": 2,
+        "compounding_frequency": 2,
+        "first_coupon_date": null,
+        "first_compounding_date": null,
+        "conversion_date": "2031-12-01"
+      }
+    }
+  ]
+}

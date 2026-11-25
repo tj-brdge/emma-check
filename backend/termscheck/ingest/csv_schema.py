@@ -1,0 +1,37 @@
+"""CSV formats accepted by Terms Check.
+
+Conventions
+- Coupons and yields are in PERCENT (5.25 = 5.25%); stored internally as decimals.
+- Prices are per 100 par. Par is in currency units (face amount held).
+- Dates: YYYY-MM-DD or MM/DD/YYYY.
+- Header names are case-insensitive; common aliases are accepted.
+"""
+from __future__ import annotations
+
+HOLDINGS_REQUIRED = [
+    "cusip", "description", "par", "price", "price_convention", "coupon", "accrual_type",
+    "maturity_date", "issue_date", "rating", "sector", "state",
+]
+HOLDINGS_OPTIONAL = [
+    "portfolio", "vendor_yield", "payment_frequency", "day_count", "acquisition_date",
+]
+VENDOR_REQUIRED = [c for c in HOLDINGS_REQUIRED if c != "par"]
+VENDOR_OPTIONAL = ["par", "vendor_yield", "payment_frequency", "day_count"]
+HISTORY_REQUIRED = ["cusip", "price_date", "price"]
+HISTORY_OPTIONAL = ["price_convention"]
+
+ALIASES = {
+    "market_price": "price", "px": "price", "vendor_price": "price",
+    "convention": "price_convention", "price_type": "price_convention",
+    "vendor_coupon": "coupon", "coupon_rate": "coupon",
+    "vendor_accrual_type": "accrual_type", "accrual": "accrual_type",
+    "maturity": "maturity_date", "issue": "issue_date", "dated_date": "issue_date",
+    "par_amount": "par", "quantity": "par", "face": "par",
+    "yield": "vendor_yield", "frequency": "payment_frequency", "pay_freq": "payment_frequency",
+    "date": "price_date",
+}
+
+PRICE_CONVENTIONS = {"clean", "dirty"}
+ACCRUAL_TYPES = {"fixed", "zero", "deferred", "accreting", "cab", "floating", "variable",
+                 "step", "none", "deferred_interest", "capital_appreciation"}
+DAY_COUNTS = {"30/360", "act/360", "act/365", "act/act"}
