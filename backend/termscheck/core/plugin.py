@@ -20,6 +20,7 @@ class AssetClassPlugin(Protocol):
     key: str
     label: str
     math_version: str                        # recorded on every computation
+    term_fields: frozenset[str]              # reference-data fields that apply to this asset class
     screens: tuple[Any, ...]                 # plugin-specific Screen objects
     extraction: ExtractionSpec
 

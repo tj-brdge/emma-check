@@ -63,11 +63,11 @@ def to_mbs_terms(t: MBSExtractedTerms) -> tuple[dict | None, list[str]]:
     elif dc != "30/360":
         return None, problems + [f"day count {dc} stated; only 30/360 monthly accrual is implemented"]
     terms = {
-        "rate_type": rt.value, "net_coupon": None if rate is None else rate / 100.0,
+        "rate_type": rt.value, "net_coupon": None if rate is None else round(rate / 100.0, 10),
         "payment_delay_days": t.payment_delay_days.value, "issue_date": issue.replace(day=1).isoformat(),
         "maturity_date": mat.isoformat(), "day_count": "30/360",
         "reset_rule": t.reset_rule.value,
-        "rate_spread": None if t.rate_spread_pct.value is None else t.rate_spread_pct.value / 100.0,
+        "rate_spread": None if t.rate_spread_pct.value is None else round(t.rate_spread_pct.value / 100.0, 10),
         "stated_factor": t.current_factor.value, "stated_factor_date": t.factor_date.value,
         "product_type": t.product_type.value.value if t.product_type.value else None,
         "first_payment_date": t.first_payment_date.value,

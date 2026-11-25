@@ -245,5 +245,80 @@
         "conversion_date": "2031-12-01"
       }
     }
-  ]
+  ],
+  "mbs": {
+    "seed": 31350,
+    "holdings": 50,
+    "defects": [
+      {
+        "defect_id": "M01-blank-became-zero",
+        "cusip": "3AZ2HTEW7",
+        "expected_rules": [
+          "null_vs_zero",
+          "frequency_contradiction",
+          "cash_reconciliation",
+          "rate_vs_disclosure"
+        ],
+        "description": "WAC-based net coupon (non-round, from generated collateral). Fund accounting carries 0%, FactSet carries the coupon BLANK; monthly interest cash arrives in the ledger. Mirrors the motivating pattern without its terms."
+      },
+      {
+        "defect_id": "M02-coupon-mistyped",
+        "cusip": "3FHWEQU50",
+        "expected_rules": [
+          "cash_reconciliation",
+          "rate_vs_disclosure"
+        ],
+        "description": "Fixed 5.5% pool booked at 3.5% (mistyped rate); cash shows 5.5%."
+      },
+      {
+        "defect_id": "M03-stale-factor",
+        "cusip": "3G73FV5M2",
+        "expected_rules": [
+          "factor_mismatch",
+          "cash_reconciliation"
+        ],
+        "description": "Book carries the factor from issue (1.0); income over-accrued on face that has paid down."
+      },
+      {
+        "defect_id": "M04-wrong-delay",
+        "cusip": "3Y8LJS9D1",
+        "expected_rules": [
+          "vendor_disagreement"
+        ],
+        "description": "Book payment delay 0 days vs 55 stated (vendors agree on 55): receivable timing is wrong."
+      },
+      {
+        "defect_id": "M05-vendor-blank-vs-zero",
+        "cusip": "3J2DT0PD0",
+        "expected_rules": [
+          "null_vs_zero"
+        ],
+        "description": "Book correct; FactSet coupon BLANK while PricingVendor sends 0%. No income impact yet - a feed defect waiting to propagate."
+      },
+      {
+        "defect_id": "M06-arm-reset-missed",
+        "cusip": "3ET89UK02",
+        "expected_rules": [
+          "rate_vs_disclosure",
+          "cash_reconciliation"
+        ],
+        "description": "ARM reset to a higher rate; book still carries the pre-reset rate."
+      },
+      {
+        "defect_id": "M07-blank-in-book",
+        "cusip": "3TAXMAJK1",
+        "expected_rules": [
+          "null_vs_zero",
+          "frequency_contradiction",
+          "cash_reconciliation",
+          "rate_vs_disclosure"
+        ],
+        "description": "Book coupon BLANK (not zero) with interest cash arriving; vendors carry the coupon."
+      }
+    ],
+    "traps": {
+      "38T5RCNE8": "cash differs from expected by cents (servicer rounding)",
+      "3CN2FK333": "principal-only strip: zero coupon by design, no interest cash"
+    }
+  }
 }

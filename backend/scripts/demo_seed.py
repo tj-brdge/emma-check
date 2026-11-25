@@ -1,5 +1,5 @@
-"""Load the synthetic dataset through the HTTP API (as a user would) and analyse the sample
-official statements. Usage: python scripts/demo_seed.py [--api http://localhost:8000]"""
+"""Load the synthetic muni + agency MBS universe through the HTTP API (as a user would) and
+analyse the sample offering documents. Usage: python scripts/demo_seed.py [--api URL] [--user NAME]"""
 from __future__ import annotations
 
 import argparse
@@ -16,23 +16,33 @@ def main():
     ap.add_argument("--api", default="http://localhost:8000")
     ap.add_argument("--user", default="demo.loader")
     a = ap.parse_args()
-    c = httpx.Client(base_url=a.api, headers={"X-User": a.user}, timeout=600)
+    c = httpx.Client(base_url=a.api, headers={"X-User": a.user}, timeout=900)
     syn = DATA / "synthetic"
-    ids = {}
-    for kind, fn, vendor in [("holdings", "holdings_vendor_a.csv", "VendorA"),
-                             ("vendor_secondary", "vendor_b.csv", "VendorB"),
-                             ("price_history", "price_history.csv", None)]:
+
+    def upload(kind, fn, vendor=None):
         r = c.post(f"/api/uploads/{kind}", files={"file": (fn, (syn / fn).read_bytes(), "text/csv")},
                    data={"vendor": vendor} if vendor else {})
         r.raise_for_status()
-        ids[kind] = r.json()["batch"]["id"]
-        print(f"uploaded {fn}: batch {ids[kind]}")
+        bid = r.json()["batch"]["id"]
+        print(f"uploaded {fn}: batch {bid}")
+        return bid
+
+    holdings = upload("holdings", "holdings_combined.csv", "FundAccounting")
+    vendors = [upload("vendor_secondary", "vendor_b.csv", "VendorB"),
+               upload("vendor_secondary", "mbs_vendor_factset.csv", "FactSet"),
+               upload("vendor_secondary", "mbs_vendor_pricing.csv", "PricingVendor")]
+    history = upload("price_history", "price_history.csv")
+    ledger = upload("ledger", "mbs_ledger.csv")
+    d = c.post("/api/documents", data={"cusip": "MULTIPLE", "doc_kind": "pool_disclosure", "asset_class": "agency_mbs"},
+               files={"file": ("mbs_pool_disclosure.csv", (syn / "mbs_pool_disclosure.csv").read_bytes(), "text/csv")})
+    d.raise_for_status()
+    print(f"pool disclosure: document {d.json()['id']}")
     manifest = json.loads((syn / "planted_defects.json").read_text())
-    run = c.post("/api/screen-runs", json={"as_of": manifest["as_of"], "holdings_batch_id": ids["holdings"],
-                                          "secondary_batch_id": ids["vendor_secondary"],
-                                          "history_batch_id": ids["price_history"]}).json()
+    run = c.post("/api/screen-runs", json={"as_of": manifest["as_of"], "holdings_batch_id": holdings,
+                                          "vendor_batch_ids": vendors, "history_batch_id": history,
+                                          "ledger_batch_id": ledger}).json()
     print(f"screen run {run['id']}: {run['flag_count']} flags")
-    for pdf in sorted((DATA / "sample_os").glob("OS_*.pdf")):
+    for pdf in sorted((DATA / "sample_os").glob("*.pdf")):
         cusip = pdf.stem.split("_")[1]
         r = c.post(f"/api/screen-runs/{run['id']}/cusips/{cusip}/official-statement",
                    files={"file": (pdf.name, pdf.read_bytes(), "application/pdf")}).json()

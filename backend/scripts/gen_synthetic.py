@@ -6,7 +6,8 @@ import json
 from dataclasses import asdict
 from pathlib import Path
 
-from termscheck.ingest import history_csv, holdings_csv, vendor_csv
+from termscheck.ingest import history_csv, holdings_csv, ledger_csv, vendor_csv
+from termscheck.plugins.agency_mbs import synthetic as mbs
 from termscheck.plugins.muni.synthetic import SEED, generate
 
 
@@ -29,8 +30,23 @@ def main() -> None:
                                     for k, v in asdict(d.true_terms).items()}}
                     for d in ds.defects],
     }
+    # Agency MBS
+    m = mbs.generate()
+    (out / "mbs_holdings.csv").write_text(holdings_csv([(h.position, h.book) for h in m.holdings]))
+    for name, fn in (("FactSet", "mbs_vendor_factset.csv"), ("PricingVendor", "mbs_vendor_pricing.csv")):
+        (out / fn).write_text(vendor_csv([h.vendors[name] for h in m.holdings]))
+    (out / "mbs_ledger.csv").write_text(ledger_csv([e for h in m.holdings for e in h.ledger]))
+    (out / "mbs_pool_disclosure.csv").write_text(mbs.disclosure_csv(m))
+    # One book-of-record file covering both asset classes (what a fund's security master looks like)
+    from dataclasses import replace as _r
+    combined = [(h.position, _r(h.vendor_a, vendor="FundAccounting")) for h in ds.holdings] + \
+               [(h.position, h.book) for h in m.holdings]
+    (out / "holdings_combined.csv").write_text(holdings_csv(combined))
+    manifest["mbs"] = {"seed": mbs.SEED, "holdings": len(m.holdings),
+                       "defects": [vars(d) for d in m.defects], "traps": m.traps}
     (out / "planted_defects.json").write_text(json.dumps(manifest, indent=2))
-    print(f"wrote {len(ds.holdings)} holdings, {len(ds.defects)} planted defects to {out}")
+    print(f"wrote {len(ds.holdings)} muni + {len(m.holdings)} MBS holdings, "
+          f"{len(ds.defects)} + {len(m.defects)} planted defects to {out}")
 
 
 if __name__ == "__main__":

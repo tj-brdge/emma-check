@@ -163,6 +163,55 @@ def build_d12(path: Path, cusip: str, other_cusips: list[str]):
                       title="Northgate University Facilities Authority Series 2021B").build(s)
 
 
+def build_mbs_supplement(path: Path, h, label: str):
+    """Offering circular supplement for one synthetic agency pass-through pool (fictional issuer)."""
+    from termscheck.plugins.agency_mbs.bondmath import payment_date
+    t = h.terms
+    cusip = h.position.cusip
+    pool = "P" + cusip[1:7]
+    first_pay = payment_date(t.issue_date, t.payment_delay_days)
+    orig = f"${h.position.par * 3:,.0f}"
+    s = [Paragraph("OFFERING CIRCULAR SUPPLEMENT", C),
+         Paragraph("MERIDIAN MORTGAGE SECURITIES TRUST<br/>(a fictional issuer used for software testing)", C),
+         Spacer(1, 10),
+         Paragraph(f"{label} Mortgage Pass-Through Certificates<br/>Pool {pool}", C), Spacer(1, 10),
+         Table([["Pool Number", "CUSIP", "Original Principal Balance", "Issue Date", "Maturity Date"],
+                [pool, cusip, orig, t.issue_date.strftime("%B %-d, %Y"), t.maturity_date.strftime("%B %-d, %Y")]],
+               hAlign="CENTER"), Spacer(1, 10),
+         Paragraph("This Supplement should be read together with the Offering Circular for the Trust's "
+                   "Mortgage Pass-Through Certificates. Capitalized terms not defined here have the meanings given "
+                   "in the Offering Circular.", B), PageBreak()]
+    s += filler("SUMMARY OF TERMS", 5)
+    s += [Paragraph("DESCRIPTION OF THE CERTIFICATES", H)]
+    if t.rate_type.value == "wac":
+        fee = h.meta["fee"] * 100
+        s += [Paragraph(f"Pass-Through Rate. The Pass-Through Rate on the Certificates will change monthly. For each "
+                        f"Accrual Period the Pass-Through Rate will equal the weighted average of the Mortgage Rates on "
+                        f"the Mortgage Loans in the Pool as of the first day of that Accrual Period, less {fee:.2f}% "
+                        f"(the sum of the servicing fee and the guarantee fee). The initial Pass-Through Rate is "
+                        f"{h.meta['initial_rate'] * 100:.3f}% per annum. The Pass-Through Rate for each subsequent "
+                        "Accrual Period will be published monthly in the Pool disclosure file.", B)]
+    else:
+        s += [Paragraph(f"Pass-Through Rate. The Certificates will bear interest at a fixed Pass-Through Rate of "
+                        f"{t.net_coupon * 100:.3f}% per annum.", B)]
+    s += [Paragraph(FILLER, B), PageBreak(),
+          Paragraph("PAYMENTS", H),
+          Paragraph("Accrual Period and Calculation. Interest on the Certificates accrues during each calendar month "
+                    "(each, an \"Accrual Period\") on the principal balance outstanding at the beginning of that month "
+                    "and is calculated on the basis of a 360-day year consisting of twelve 30-day months.", B),
+          Paragraph(f"Payment Dates and Delay. Payments of principal and interest are made monthly. Each payment of "
+                    f"interest for an Accrual Period is made {t.payment_delay_days} days after the first day of that "
+                    f"Accrual Period (a {t.payment_delay_days}-day payment delay), or on the next Business Day. The first "
+                    f"Payment Date will be {first_pay.strftime('%B %-d, %Y')}.", B),
+          Paragraph("Principal. Principal will be passed through monthly as received on the Mortgage Loans, "
+                    "including scheduled payments and prepayments. The outstanding principal balance of the "
+                    "Certificates is expressed as a Pool Factor published monthly.", B), PageBreak()]
+    s += filler("RISK FACTORS", 7)
+    s += filler("CERTAIN FEDERAL INCOME TAX CONSEQUENCES", 5)
+    SimpleDocTemplate(str(path), pagesize=letter, leftMargin=inch, rightMargin=inch,
+                      title=f"Meridian Mortgage Securities Trust Pool {pool} (fictional)").build(s)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--seed", type=int, default=SEED)
@@ -176,6 +225,12 @@ def main():
     d = {x.defect_id[:3]: x for x in ds.defects}
     build_d01(out / f"OS_{d['D01'].cusip}.pdf", d["D01"].cusip, [g.cusip() for _ in range(4)])
     build_d12(out / f"OS_{d['D12'].cusip}.pdf", d["D12"].cusip, [g.cusip() for _ in range(2)])
+    from termscheck.plugins.agency_mbs import synthetic as mbs
+    m = mbs.generate()
+    md = {x.defect_id[:3]: x for x in m.defects}
+    for key, label in (("M01", "Adjustable-Rate (WAC)"), ("M02", "Fixed-Rate")):
+        h = next(x for x in m.holdings if x.position.cusip == md[key].cusip)
+        build_mbs_supplement(out / f"SUPP_{h.position.cusip}.pdf", h, label)
     print("wrote", sorted(p.name for p in out.glob("*.pdf")))
 
 

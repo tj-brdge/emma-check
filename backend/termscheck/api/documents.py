@@ -32,7 +32,7 @@ def extraction_json(e: Extraction) -> dict:
 
 @router.post("/documents")
 async def upload_document(cusip: str = Form(...), file: UploadFile = File(...),
-                          doc_kind: str = Form("official_statement"), asset_class: str | None = Form(None),
+                          doc_kind: str | None = Form(None), asset_class: str | None = Form(None),
                           user: str = Depends(current_user), session: Session = Depends(get_session),
                           store: UploadSource = Depends(get_store)):
     content = await file.read()

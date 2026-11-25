@@ -103,9 +103,10 @@ def recorded_llm():
     from pathlib import Path
 
     from termscheck.extraction.llm import ExtractionLLMError, RecordedExtractionClient
+    from termscheck.plugins.agency_mbs.synthetic import generate as generate_mbs
     ds = generate()
     by_cusip = {}
-    for d in ds.defects:
+    for d in [*ds.defects, *generate_mbs().defects]:
         f = Path(__file__).parent / "fixtures" / f"recorded_extraction_{d.defect_id[:3]}.json"
         if f.exists():
             by_cusip[d.cusip] = json.loads(f.read_text())
@@ -133,3 +134,9 @@ def screened(client, synthetic_csvs, dataset):
         "secondary_batch_id": ids["vendor_secondary"], "history_batch_id": ids["price_history"]}).json()
     ids["run"] = run["id"]
     return ids
+
+
+@pytest.fixture(scope="session")
+def mbs_dataset():
+    from termscheck.plugins.agency_mbs.synthetic import generate as generate_mbs
+    return generate_mbs()

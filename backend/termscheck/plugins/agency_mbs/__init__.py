@@ -30,6 +30,9 @@ def infer_delay(rec, pay_day: int) -> tuple[int, str | None]:
 class AgencyMBSPlugin:
     key = "agency_mbs"
     label = "Agency MBS"
+    primary_document_kind = "oc_supplement"
+    term_fields = frozenset({"price_convention", "coupon", "accrual_type", "issue_date", "payment_frequency",
+                             "day_count", "product_type", "factor", "factor_date", "payment_delay_days", "rate_type"})
     from termscheck.plugins.agency_mbs.treatment import TREATMENT_VERSION as math_version
     screens = (FactorMismatchScreen(), RateVsDisclosureScreen())
     extraction = MBS_SPEC
@@ -61,15 +64,17 @@ class AgencyMBSPlugin:
         if why:
             assumptions.append(why)
         month = accrual_month_paid_on(entry.entry_date, delay)
-        factor = next((o.factor for o in data.observations.get(rec.cusip, []) if o.month == month
-                       and o.factor is not None), None)
+        ob = next((o for o in data.observations.get(rec.cusip, []) if o.month == month), None)
+        factor = ob.factor if ob is not None else None
         if factor is None:
             factor = rec.factor
             assumptions.append(f"no disclosed factor for {month:%Y-%m}; book factor used"
                                if factor is not None else f"no factor for {month:%Y-%m}; original face used")
         face = pos.par * (factor if factor is not None else 1.0)
         nxt = month.replace(year=month.year + month.month // 12, month=month.month % 12 + 1)
-        return CashPeriod(month, nxt, face, 1.0 / 12.0, tuple(assumptions))
+        book_face = pos.par * rec.factor if rec.factor is not None else None
+        return CashPeriod(month, nxt, face, 1.0 / 12.0, tuple(assumptions), book_face,
+                          ob.net_coupon if ob is not None else None)
 
 
 PLUGIN = register(AgencyMBSPlugin())

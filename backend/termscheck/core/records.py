@@ -104,6 +104,8 @@ class CashPeriod:
     face: float                      # face outstanding during the period (currency)
     years: float                     # accrual period length in years on the security's basis
     assumptions: tuple[str, ...] = ()
+    book_face: float | None = None   # face the book of record accrues on (None = same as face)
+    period_rate: float | None = None # disclosed rate for the period, if any (variable-rate securities)
 
 
 @dataclass

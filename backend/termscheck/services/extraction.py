@@ -24,9 +24,10 @@ def asset_class_of(session: Session, cusip: str) -> str:
 
 def register_document(session: Session, store: UploadSource, *, cusip: str, filename: str,
                       content: bytes, user: str, asset_class: str | None = None,
-                      doc_kind: str = "official_statement") -> Document:
+                      doc_kind: str | None = None) -> Document:
     asset_class = asset_class or asset_class_of(session, cusip)
     plugin = get_plugin(asset_class)
+    doc_kind = doc_kind or plugin.primary_document_kind
     is_data = doc_kind in getattr(plugin, "data_document_kinds", ())
     parsed = None
     if is_data:

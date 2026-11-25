@@ -38,8 +38,13 @@ class CashReconciliationScreen:
             if period_fn is None:
                 continue
             rows, assumptions = [], set()
+            regime_start = _latest_rate_jump(data, rec.cusip, config.cash_regime_tolerance_bp)
             for e in sorted(entries, key=lambda x: x.entry_date):
                 per = period_fn(rec, pos, e, data)
+                if regime_start is not None and per.start < regime_start and e.booked_income is None:
+                    assumptions.add("periods before the latest rate reset excluded: the book's historical rate "
+                                    "cannot be inferred from today's record")
+                    continue
                 assumptions.update(per.assumptions)
                 implied = e.cash / (per.face * per.years) if per.face and per.years else None
                 if e.booked_income is not None:
@@ -47,10 +52,13 @@ class CashReconciliationScreen:
                 elif rec.coupon is None:
                     booked, basis = 0.0, "book coupon BLANK: nothing bookable"
                 else:
-                    booked, basis = rec.coupon * per.face * per.years, "book terms"
+                    book_face = per.face if per.book_face is None else per.book_face
+                    booked, basis = rec.coupon * book_face * per.years, "book terms"
                 rows.append({"date": e.entry_date.isoformat(), "cash": e.cash, "booked": booked, "basis": basis,
                              "period_start": per.start.isoformat(), "period_end": per.end.isoformat(),
                              "face": per.face, "implied_rate": implied})
+            if not rows:
+                continue
             cash = sum(r["cash"] for r in rows)
             booked = sum(r["booked"] for r in rows)
             if cash <= 0:
@@ -82,3 +90,15 @@ class CashReconciliationScreen:
 
 def cusip_of(key: tuple[str, str]) -> str:
     return key[1]
+
+
+def _latest_rate_jump(data: ScreenInput, cusip: str, tolerance_bp: float):
+    """Start of the current rate regime: the latest month whose disclosed rate jumped by more than
+    the tolerance from the prior month (an ARM reset). Gradual WAC drift is not a regime change."""
+    obs = sorted((o for o in data.observations.get(cusip, []) if o.net_coupon is not None and o.month <= data.as_of),
+                 key=lambda o: o.month)
+    jump = None
+    for a, b in zip(obs, obs[1:]):
+        if abs(b.net_coupon - a.net_coupon) * 1e4 > tolerance_bp:
+            jump = b.month
+    return jump

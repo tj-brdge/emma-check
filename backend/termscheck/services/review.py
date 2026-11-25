@@ -46,16 +46,21 @@ def approved_rows(session: Session) -> list[dict]:
                                                            VendorTerms.cusip == f.cusip)).first()
             o = c.outputs
             rows.append({
-                "finding_id": f.id, "cusip": f.cusip, "description": f.description, "as_of": f.as_of.isoformat(),
+                "finding_id": f.id, "asset_class": f.asset_class, "cusip": f.cusip, "description": f.description, "as_of": f.as_of.isoformat(),
                 "portfolio": h.portfolio, "par": f"{h.par:.2f}",
                 "vendor_coupon_pct": "BLANK" if vt.coupon is None else f"{vt.coupon * 100:.4f}",
                 "vendor_accrual_type": vt.accrual_type,
                 "vendor_price": f"{vt.price:.6f}", "vendor_price_convention": vt.price_convention,
-                "document_interest_type": terms.get("interest_type"),
-                "document_rate_pct": None if terms.get("rate") is None else f"{terms['rate'] * 100:.4f}",
+                "document_interest_type": terms.get("interest_type", terms.get("rate_type")),
+                "document_rate_pct": _rate_pct(terms, o),
                 "document_compounding": terms.get("compounding_frequency"),
                 "document_day_count": terms.get("day_count"),
-                "document_accrual_start": terms.get("dated_date"), "document_maturity": terms.get("maturity_date"),
+                "document_accrual_start": terms.get("dated_date", terms.get("issue_date")),
+                "document_maturity": terms.get("maturity_date"),
+                "document_payment_delay_days": terms.get("payment_delay_days"),
+                "current_factor": _f(o.get("current_factor"), 10), "current_face": _f(o.get("current_face"), 2),
+                "interest_receivable_document": _f(o.get("receivable_document"), 2),
+                "interest_receivable_book": _f(o.get("receivable_book"), 2),
                 "accreted_value_per_100": _f(o.get("accreted_value")),
                 "accrued_interest_per_100": _f(o.get("true_accrued")),
                 "correct_clean_per_100": _f(o.get("correct_clean")),
@@ -87,3 +92,11 @@ def approved_csv(session: Session, user: str) -> str:
 
 def _f(x, nd: int = 6):
     return None if x is None else f"{x:.{nd}f}"
+
+
+def _rate_pct(terms: dict, outputs: dict) -> str | None:
+    """Document rate: muni coupon/accretion rate, or the MBS net coupon for the as-of month."""
+    r = terms.get("rate")
+    if r is None:
+        r = outputs.get("current_rate")
+    return None if r is None else f"{r * 100:.4f}"

@@ -1,0 +1,21 @@
+{
+  "security_identification": {"value": "Pool PFHWEQU, CUSIP 3FHWEQU50", "page": 1,
+    "excerpt": "PFHWEQU 3FHWEQU50 $22,215,000 January 1, 2022 January 1, 2037"},
+  "product_type": {"value": "pass_through", "page": 1, "excerpt": "Fixed-Rate Mortgage Pass-Through Certificates"},
+  "rate_type": {"value": "fixed", "page": 3,
+    "excerpt": "The Certificates will bear interest at a fixed Pass-Through Rate of 5.500% per annum."},
+  "net_coupon_pct": {"value": 5.5, "page": 3,
+    "excerpt": "The Certificates will bear interest at a fixed Pass-Through Rate of 5.500% per annum."},
+  "reset_rule": {"value": null, "page": null, "excerpt": null},
+  "rate_spread_pct": {"value": null, "page": null, "excerpt": null},
+  "current_factor": {"value": null, "page": null, "excerpt": null},
+  "factor_date": {"value": null, "page": null, "excerpt": null},
+  "payment_delay_days": {"value": 45, "page": 4, "excerpt": "(a 45-day payment delay)"},
+  "day_count": {"value": "30/360", "page": 4,
+    "excerpt": "calculated on the basis of a 360-day year consisting of twelve 30-day months"},
+  "issue_date": {"value": "2022-01-01", "page": 1, "excerpt": "PFHWEQU 3FHWEQU50 $22,215,000 January 1, 2022 January 1, 2037"},
+  "first_payment_date": {"value": "2022-02-15", "page": 4, "excerpt": "The first Payment Date will be February 15, 2022."},
+  "maturity_date": {"value": "2037-01-01", "page": 1, "excerpt": "PFHWEQU 3FHWEQU50 $22,215,000 January 1, 2022 January 1, 2037"},
+  "payment_frequency": {"value": 12, "page": 4, "excerpt": "Payments of principal and interest are made monthly."},
+  "notes": ""
+}

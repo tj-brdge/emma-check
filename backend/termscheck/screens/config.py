@@ -36,6 +36,7 @@ class ScreenConfig:
     cash_rate_gap_bp: float = 25.0           # ...and the implied rate differs by more than this
     cash_overbooked_pct: float = 0.10        # booked income above cash (over-accrual)
     cash_lookback_days: int = 400
+    cash_regime_tolerance_bp: float = 10.0   # a month-to-month rate jump above this starts a new regime
 
     def as_dict(self) -> dict:
         return {"version": SCREEN_CONFIG_VERSION, **asdict(self)}

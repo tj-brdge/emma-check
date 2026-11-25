@@ -5,6 +5,7 @@ on its own (no zero anywhere) is reported at low severity, for visibility.
 """
 from __future__ import annotations
 
+from termscheck.core.plugin import all_plugins
 from termscheck.core.records import Flag, ScreenInput
 from termscheck.screens.base import ScreenContext, clamp_severity
 from termscheck.screens.config import ScreenConfig
@@ -18,10 +19,14 @@ class NullVsZeroScreen:
 
     def run(self, data: ScreenInput, config: ScreenConfig, ctx: ScreenContext) -> list[Flag]:
         flags: list[Flag] = []
-        for cusip in data.primary:
+        plugins = all_plugins()
+        for cusip, book in data.primary.items():
             recs = data.sources_for(cusip)
+            applies = getattr(plugins.get(book.asset_class), "term_fields", None)
             conflicts, blanks_only = {}, {}
             for name, weight in FIELDS.items():
+                if applies is not None and name not in applies:
+                    continue                      # e.g. a muni has no pool factor: blank is expected
                 blank = [r.vendor for r in recs if r.is_blank(name)]
                 zero = [r.vendor for r in recs if r.is_zero(name)]
                 if blank and zero:

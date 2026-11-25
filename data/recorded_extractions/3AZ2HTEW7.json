@@ -1,0 +1,23 @@
+{
+  "security_identification": {"value": "Pool PAZ2HTE, CUSIP 3AZ2HTEW7", "page": 1,
+    "excerpt": "PAZ2HTE 3AZ2HTEW7 $27,585,000 April 1, 2019 April 1, 2049"},
+  "product_type": {"value": "pass_through", "page": 1,
+    "excerpt": "Adjustable-Rate (WAC) Mortgage Pass-Through Certificates"},
+  "rate_type": {"value": "wac", "page": 3,
+    "excerpt": "the Pass-Through Rate will equal the weighted average of the Mortgage Rates on the Mortgage Loans in the Pool as of the first day of that Accrual Period, less 0.65%"},
+  "net_coupon_pct": {"value": 5.092, "page": 3, "excerpt": "The initial Pass-Through Rate is 5.092% per annum."},
+  "reset_rule": {"value": "Changes monthly: weighted average Mortgage Rate of the pool loans as of the first day of the Accrual Period less 0.65% (servicing + guarantee fee)", "page": 3,
+    "excerpt": "The Pass-Through Rate on the Certificates will change monthly."},
+  "rate_spread_pct": {"value": 0.65, "page": 3,
+    "excerpt": "less 0.65% (the sum of the servicing fee and the guarantee fee)"},
+  "current_factor": {"value": null, "page": null, "excerpt": null},
+  "factor_date": {"value": null, "page": null, "excerpt": null},
+  "payment_delay_days": {"value": 45, "page": 4, "excerpt": "(a 45-day payment delay)"},
+  "day_count": {"value": "30/360", "page": 4,
+    "excerpt": "calculated on the basis of a 360-day year consisting of twelve 30-day months"},
+  "issue_date": {"value": "2019-04-01", "page": 1, "excerpt": "PAZ2HTE 3AZ2HTEW7 $27,585,000 April 1, 2019 April 1, 2049"},
+  "first_payment_date": {"value": "2019-05-15", "page": 4, "excerpt": "The first Payment Date will be May 15, 2019."},
+  "maturity_date": {"value": "2049-04-01", "page": 1, "excerpt": "PAZ2HTE 3AZ2HTEW7 $27,585,000 April 1, 2019 April 1, 2049"},
+  "payment_frequency": {"value": 12, "page": 4, "excerpt": "Payments of principal and interest are made monthly."},
+  "notes": "The current Pass-Through Rate is not stated; it is published monthly in the Pool disclosure file."
+}
