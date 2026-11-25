@@ -14,6 +14,10 @@ class ExtractionLLMError(RuntimeError):
     pass
 
 
+NO_CREDENTIALS = ("No Anthropic API credentials: set ANTHROPIC_API_KEY for the API service, or run with "
+                  "TERMSCHECK_LLM_MODE=recorded to replay the sample extractions")
+
+
 @dataclass
 class LLMResponse:
     terms: BaseModel
@@ -50,12 +54,18 @@ class AnthropicExtractionClient:
                     betas=["server-side-fallback-2026-07-01"], fallbacks="default", **kwargs)
             else:
                 resp = self.client.messages.parse(**kwargs)
+        except anthropic.AuthenticationError as e:
+            raise ExtractionLLMError(f"{NO_CREDENTIALS} (API rejected the key: {e.message})") from e
         except anthropic.RateLimitError as e:
             raise ExtractionLLMError(f"rate limited: {e}") from e
         except anthropic.APIStatusError as e:
             raise ExtractionLLMError(f"API error {e.status_code}: {e.message}") from e
         except anthropic.APIConnectionError as e:
             raise ExtractionLLMError(f"connection error: {e}") from e
+        except TypeError as e:
+            if "authentication" in str(e).lower():
+                raise ExtractionLLMError(NO_CREDENTIALS) from e
+            raise
         except (ValidationError, ValueError) as e:
             # parse() validates eagerly; refusals and truncated output fail here.
             raise ExtractionLLMError(f"model output did not match the extraction schema: {e}") from e

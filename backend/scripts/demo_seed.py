@@ -19,11 +19,19 @@ def main():
     c = httpx.Client(base_url=a.api, headers={"X-User": a.user}, timeout=900)
     syn = DATA / "synthetic"
 
+    def call(resp):
+        try:
+            body = resp.json()
+        except ValueError:
+            raise SystemExit(f"{resp.request.method} {resp.request.url} -> HTTP {resp.status_code}: {resp.text[:500]}")
+        if resp.status_code >= 400:
+            raise SystemExit(f"{resp.request.method} {resp.request.url} -> HTTP {resp.status_code}: {body.get('detail')}")
+        return body
+
     def upload(kind, fn, vendor=None):
-        r = c.post(f"/api/uploads/{kind}", files={"file": (fn, (syn / fn).read_bytes(), "text/csv")},
-                   data={"vendor": vendor} if vendor else {})
-        r.raise_for_status()
-        bid = r.json()["batch"]["id"]
+        r = call(c.post(f"/api/uploads/{kind}", files={"file": (fn, (syn / fn).read_bytes(), "text/csv")},
+                        data={"vendor": vendor} if vendor else {}))
+        bid = r["batch"]["id"]
         print(f"uploaded {fn}: batch {bid}")
         return bid
 
@@ -35,17 +43,20 @@ def main():
     ledger = upload("ledger", "mbs_ledger.csv")
     d = c.post("/api/documents", data={"cusip": "MULTIPLE", "doc_kind": "pool_disclosure", "asset_class": "agency_mbs"},
                files={"file": ("mbs_pool_disclosure.csv", (syn / "mbs_pool_disclosure.csv").read_bytes(), "text/csv")})
-    d.raise_for_status()
-    print(f"pool disclosure: document {d.json()['id']}")
+    print(f"pool disclosure: document {call(d)['id']}")
     manifest = json.loads((syn / "planted_defects.json").read_text())
-    run = c.post("/api/screen-runs", json={"as_of": manifest["as_of"], "holdings_batch_id": holdings,
-                                          "vendor_batch_ids": vendors, "history_batch_id": history,
-                                          "ledger_batch_id": ledger}).json()
+    run = call(c.post("/api/screen-runs", json={"as_of": manifest["as_of"], "holdings_batch_id": holdings,
+                                               "vendor_batch_ids": vendors, "history_batch_id": history,
+                                               "ledger_batch_id": ledger}))
     print(f"screen run {run['id']}: {run['flag_count']} flags")
     for pdf in sorted((DATA / "sample_os").glob("*.pdf")):
         cusip = pdf.stem.split("_")[1]
-        r = c.post(f"/api/screen-runs/{run['id']}/cusips/{cusip}/official-statement",
-                   files={"file": (pdf.name, pdf.read_bytes(), "application/pdf")}).json()
+        try:
+            r = call(c.post(f"/api/screen-runs/{run['id']}/cusips/{cusip}/official-statement",
+                            files={"file": (pdf.name, pdf.read_bytes(), "application/pdf")}))
+        except SystemExit as e:
+            print(f"{cusip}: {e}")
+            continue
         f = r.get("finding")
         print(f"{cusip}: extraction {r['extraction']['status']}"
               + (f", finding {f['id']} impact ${f['income_impact_usd']:,.0f}" if f else f", error {r['error']}"))

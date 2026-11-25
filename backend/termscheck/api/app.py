@@ -15,6 +15,13 @@ def create_app() -> FastAPI:
               workbench.router, audit.router):
         app.include_router(r)
 
+    @app.exception_handler(Exception)
+    async def unhandled(request, exc):   # always answer JSON, never a bare text 500
+        import logging
+        logging.getLogger("termscheck").exception("unhandled error on %s", request.url.path)
+        from fastapi.responses import JSONResponse
+        return JSONResponse(status_code=500, content={"detail": f"internal error: {type(exc).__name__}: {exc}"})
+
     @app.get("/api/health")
     def health():
         return {"status": "ok"}

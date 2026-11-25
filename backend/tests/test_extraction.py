@@ -225,3 +225,14 @@ def test_live_extraction(os_files, p):
     for attr in ("interest_type", "rate", "dated_date", "maturity_date", "compounding_frequency",
                  "conversion_date"):
         assert getattr(t, attr) == getattr(d.true_terms, attr), attr
+
+
+def test_missing_credentials_become_a_clear_extraction_error(monkeypatch):
+    import anthropic
+    for k in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"):
+        monkeypatch.delenv(k, raising=False)
+    client = anthropic.Anthropic(max_retries=0, http_client=httpx2.Client(
+        transport=httpx2.MockTransport(lambda r: httpx2.Response(500))))
+    llm = AnthropicExtractionClient(client)
+    with pytest.raises(ExtractionLLMError, match="ANTHROPIC_API_KEY"):
+        llm.extract(system="s", user="u", model="claude-sonnet-5-5", max_tokens=10, schema=ExtractedTerms)
