@@ -4,14 +4,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from ..settings import settings
-from . import screens, uploads
+from . import documents, findings, screens, uploads
 
 
 def create_app() -> FastAPI:
     app = FastAPI(title="Terms Check", version="0.1.0")
     app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins.split(","),
                        allow_methods=["*"], allow_headers=["*"])
-    for r in (uploads.router, screens.router):
+    for r in (uploads.router, screens.router, documents.router, findings.router):
         app.include_router(r)
 
     @app.get("/api/health")

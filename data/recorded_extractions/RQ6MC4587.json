@@ -1,0 +1,32 @@
+{
+  "security_identification": {"value": "Convertible CABs due December 1, 2045, CUSIP RQ6MC4587", "page": 2,
+    "excerpt": "December 1, 2045 $15,624,000 December 1, 2031 5.500% RQ6MC4587"},
+  "interest_type": {"value": "convertible_cab", "page": 4,
+    "excerpt": "will accrete in value from such date at the accretion rate of 5.500% per annum, compounded semiannually on each June 1 and December 1, commencing June 1, 2022, to December 1, 2031 (the \"Conversion Date\")"},
+  "interest_rate_pct": {"value": 5.5, "page": 4,
+    "excerpt": "at the accretion rate of 5.500% per annum"},
+  "compounding_frequency": {"value": 2, "page": 4,
+    "excerpt": "compounded semiannually on each June 1 and December 1, commencing June 1, 2022"},
+  "day_count": {"value": "30/360", "page": 4,
+    "excerpt": "Accreted Value and interest will be computed on the basis of a 360-day year comprised of twelve 30-day months."},
+  "accrual_start_date": {"value": "2021-12-01", "page": 4,
+    "excerpt": "will be dated the date of delivery thereof, December 1, 2021"},
+  "maturity_date": {"value": "2045-12-01", "page": 2,
+    "excerpt": "December 1, 2045 $15,624,000 December 1, 2031 5.500% RQ6MC4587"},
+  "payment_frequency": {"value": 2, "page": 4,
+    "excerpt": "payable semiannually on each June 1 and December 1, commencing June 1, 2032"},
+  "payment_dates": {"value": "June 1 and December 1, commencing June 1, 2032", "page": 4,
+    "excerpt": "payable semiannually on each June 1 and December 1, commencing June 1, 2032"},
+  "first_payment_date": {"value": "2032-06-01", "page": 4,
+    "excerpt": "payable semiannually on each June 1 and December 1, commencing June 1, 2032"},
+  "first_compounding_date": {"value": "2022-06-01", "page": 4,
+    "excerpt": "compounded semiannually on each June 1 and December 1, commencing June 1, 2022"},
+  "conversion_date": {"value": "2031-12-01", "page": 4,
+    "excerpt": "to December 1, 2031 (the \"Conversion Date\")"},
+  "call_features": [
+    {"kind": "optional", "first_call_date": "2031-12-01", "price": "100% plus accrued interest", "page": 5,
+     "description": "Optional redemption on or after December 1, 2031 at principal plus accrued interest",
+     "excerpt": "subject to optional redemption on any date on or after December 1, 2031, at a redemption price equal to the principal amount thereof plus accrued interest, without premium"}
+  ],
+  "notes": ""
+}

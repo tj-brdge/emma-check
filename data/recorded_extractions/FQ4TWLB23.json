@@ -1,0 +1,32 @@
+{
+  "security_identification": {"value": "Deferred Interest Bonds due July 1, 2034, 11.000%, CUSIP FQ4TWLB23", "page": 2,
+    "excerpt": "July 1, 2034 $12,500,000 11.000% 100.000 FQ4TWLB23"},
+  "interest_type": {"value": "deferred_interest", "page": 6,
+    "excerpt": "Interest on the Deferred Interest Bonds will not be paid currently but will accrue and be compounded semiannually on each January 1 and July 1"},
+  "interest_rate_pct": {"value": 11.0, "page": 6,
+    "excerpt": "The Deferred Interest Bonds will bear interest at the rate of 11.000% per annum from the Dated Date."},
+  "compounding_frequency": {"value": 2, "page": 6,
+    "excerpt": "will accrue and be compounded semiannually on each January 1 and July 1, commencing January 1, 2020"},
+  "day_count": {"value": "30/360", "page": 6,
+    "excerpt": "Interest on the Deferred Interest Bonds shall be computed on the basis of a 360-day year consisting of twelve 30-day months."},
+  "accrual_start_date": {"value": "2019-07-01", "page": 5,
+    "excerpt": "The Series 2019 Bonds will be dated their date of delivery, which is expected to be July 1, 2019 (the \"Dated Date\")."},
+  "maturity_date": {"value": "2034-07-01", "page": 2,
+    "excerpt": "July 1, 2034 $12,500,000 11.000% 100.000 FQ4TWLB23"},
+  "payment_frequency": {"value": null, "page": null, "excerpt": null},
+  "payment_dates": {"value": "at maturity or upon prior redemption", "page": 6,
+    "excerpt": "will be payable, together with the principal thereof, only at maturity or upon prior redemption"},
+  "first_payment_date": {"value": null, "page": null, "excerpt": null},
+  "first_compounding_date": {"value": "2020-01-01", "page": 6,
+    "excerpt": "compounded semiannually on each January 1 and July 1, commencing January 1, 2020 (each, a \"Compounding Date\")"},
+  "conversion_date": {"value": null, "page": null, "excerpt": null},
+  "call_features": [
+    {"kind": "optional", "first_call_date": "2029-07-01", "price": "Accreted Value", "page": 7,
+     "description": "Optional redemption on or after July 1, 2029 at Accreted Value, without premium",
+     "excerpt": "The Deferred Interest Bonds are subject to optional redemption prior to maturity in whole or in part on any date on or after July 1, 2029, at a redemption price equal to the Accreted Value thereof"},
+    {"kind": "extraordinary", "first_call_date": null, "price": "Accreted Value", "page": 7,
+     "description": "Extraordinary mandatory redemption from prepayments of Special Assessments",
+     "excerpt": "The Series 2019 Bonds are subject to extraordinary mandatory redemption in whole or in part on any Interest Payment Date from prepayments of Special Assessments"}
+  ],
+  "notes": "Interest accrues from the Dated Date and compounds semiannually; nothing is paid before maturity or redemption. Appendix E provides an accreted value table per $5,000 principal."
+}

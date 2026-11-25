@@ -96,3 +96,78 @@ class ScreenFlag(Base):
     inputs: Mapped[dict[str, Any]] = mapped_column(JSONB)
     computed: Mapped[dict[str, Any]] = mapped_column(JSONB)
     run: Mapped[ScreenRun] = relationship(back_populates="flags")
+
+
+class Document(Base):
+    __tablename__ = "document"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    cusip: Mapped[str] = mapped_column(String(9), index=True)
+    source: Mapped[str] = mapped_column(String(16))
+    source_ref: Mapped[str] = mapped_column(String(128))
+    filename: Mapped[str] = mapped_column(String(255))
+    sha256: Mapped[str] = mapped_column(String(64))
+    page_count: Mapped[int] = mapped_column(Integer)
+    storage_path: Mapped[str] = mapped_column(Text)
+    uploaded_by: Mapped[str] = mapped_column(String(128))
+    uploaded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class DocumentPage(Base):
+    __tablename__ = "document_page"
+    document_id: Mapped[int] = mapped_column(ForeignKey("document.id"), primary_key=True)
+    page_no: Mapped[int] = mapped_column(Integer, primary_key=True)
+    text: Mapped[str] = mapped_column(Text)
+
+
+class Extraction(Base):
+    __tablename__ = "extraction"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    document_id: Mapped[int] = mapped_column(ForeignKey("document.id"), index=True)
+    cusip: Mapped[str] = mapped_column(String(9), index=True)
+    model_requested: Mapped[str] = mapped_column(String(64))
+    model_served: Mapped[str | None] = mapped_column(String(64))
+    prompt_version: Mapped[str] = mapped_column(String(32))
+    status: Mapped[str] = mapped_column(String(16))           # ok | needs_review | failed
+    terms: Mapped[dict[str, Any] | None] = mapped_column(JSONB)        # ExtractedTerms
+    citation_checks: Mapped[list[Any] | None] = mapped_column(JSONB)
+    interest_terms: Mapped[dict[str, Any] | None] = mapped_column(JSONB)  # mapped bond-math terms
+    problems: Mapped[list[Any] | None] = mapped_column(JSONB)
+    page_selection: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    llm_meta: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    error: Mapped[str | None] = mapped_column(Text)
+    created_by: Mapped[str] = mapped_column(String(128))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class Finding(Base):
+    __tablename__ = "finding"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    cusip: Mapped[str] = mapped_column(String(9), index=True)
+    description: Mapped[str] = mapped_column(Text)
+    as_of: Mapped[date] = mapped_column(Date)
+    screen_run_id: Mapped[int] = mapped_column(ForeignKey("screen_run.id"))
+    extraction_id: Mapped[int] = mapped_column(ForeignKey("extraction.id"))
+    income_impact_usd: Mapped[float] = mapped_column(MONEY)
+    run_rate_gap_usd: Mapped[float] = mapped_column(MONEY)
+    headline: Mapped[str] = mapped_column(Text)
+    narrative: Mapped[dict[str, Any]] = mapped_column(JSONB)    # vendor_says, document_says, ...
+    comparison: Mapped[list[Any]] = mapped_column(JSONB)
+    rules: Mapped[list[Any]] = mapped_column(JSONB)
+    status: Mapped[str] = mapped_column(String(16), default="open")  # derived from review actions
+    created_by: Mapped[str] = mapped_column(String(128))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    computations: Mapped[list[Computation]] = relationship(back_populates="finding", order_by="Computation.id")
+
+
+class Computation(Base):
+    __tablename__ = "computation"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    finding_id: Mapped[int] = mapped_column(ForeignKey("finding.id"), index=True)
+    extraction_id: Mapped[int] = mapped_column(ForeignKey("extraction.id"))
+    holding_id: Mapped[int] = mapped_column(ForeignKey("holding.id"))
+    as_of: Mapped[date] = mapped_column(Date)
+    inputs: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    outputs: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    bondmath_version: Mapped[str] = mapped_column(String(16))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    finding: Mapped[Finding] = relationship(back_populates="computations")

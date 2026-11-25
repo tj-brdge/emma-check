@@ -240,3 +240,15 @@ def test_invalid_terms_rejected():
         InterestTerms(InterestType.CONVERTIBLE_CAB, 0.05, D(2020, 1, 1), D(2030, 1, 1))
     with pytest.raises(ValueError):
         InterestTerms(InterestType.CURRENT_PAY, 0.05, D(2030, 1, 1), D(2020, 1, 1))
+
+
+def test_forward_run_rate():
+    # Deferred 11% from 2026-07-01: next 12 months = V(2027-07-01) - V(2026-07-01)
+    #   = 100*1.055^16 - 100*1.055^14 = 100*1.055^14*(1.055^2 - 1) = 211.6091462 * 0.113025 = 23.9171237
+    vendor = VendorView(price=211.6091462, price_convention="clean", coupon=0.0, accrual_type="zero")
+    t = compute_treatment(DEF, vendor, par=100, as_of=D(2026, 7, 1))
+    assert t.income_next_12m_document == approx(23.9171237, 1e-6)
+    # vendor zero: constant-yield at the vendor-implied (negative) yield -> negative "income"
+    yv = t.yield_vendor_terms
+    assert t.income_next_12m_vendor == approx(211.6091462 * ((1 + yv / 2) ** 2 - 1), 1e-6)
+    assert t.run_rate_gap_usd == approx(t.income_next_12m_document - t.income_next_12m_vendor)

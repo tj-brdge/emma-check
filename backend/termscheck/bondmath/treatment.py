@@ -16,7 +16,7 @@ from datetime import date
 
 from .accretion import ACCRETING_TYPES, accretion_schedule, accreted_value
 from .accrual import accrued_interest, cash_flows, economic_income
-from .daycount import days_30_360, year_fraction
+from .daycount import add_months, days_30_360, year_fraction
 from .schedules import bracket, regular_schedule
 from .models import AccretionPoint, DayCount, InterestTerms, InterestType, Treatment, VendorView
 from .yields import yield_from_dirty_price
@@ -100,6 +100,21 @@ def compute_treatment(
     y_vendor = implied_yield(vendor_terms_as_bond(vendor, terms.dated_date, terms.maturity_date),
                              full, as_of)
 
+    # Forward 12-month income run-rate. Vendor side: coupon accrual for coupon bonds; for a
+    # zero coupon, constant-yield accretion at the vendor-implied yield (how an accounting
+    # system amortises discount/premium on a zero). Accreting-label vendors book document accretion.
+    horizon = min(add_months(as_of, 12), terms.maturity_date)
+    inc_doc = economic_income(terms, as_of, horizon)
+    span = year_fraction(DayCount.THIRTY_360, as_of, horizon) if horizon > as_of else 0.0
+    if vendor_recognises_accretion and terms.interest_type in ACCRETING_TYPES:
+        inc_vendor = inc_doc
+    elif vendor.coupon > 0:
+        inc_vendor = 100.0 * vendor.coupon * span
+    elif y_vendor is not None:
+        inc_vendor = (full - v_acc) * ((1 + y_vendor / 2) ** (2 * span) - 1)
+    else:
+        inc_vendor = 0.0
+
     window_usd = None
     ws = None
     if window_start is not None:
@@ -126,6 +141,9 @@ def compute_treatment(
         accretion_since_dated=economic_income(terms, terms.dated_date, as_of),
         unbooked_per_100=unbooked,
         unbooked_income_usd=unbooked * par / 100.0,
+        income_next_12m_document=inc_doc,
+        income_next_12m_vendor=inc_vendor,
+        run_rate_gap_usd=(inc_doc - inc_vendor) * par / 100.0,
         window_start=ws,
         unbooked_window_usd=window_usd,
         schedule=schedule,

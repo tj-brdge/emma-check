@@ -102,6 +102,9 @@ class Treatment:
     accretion_since_dated: float            # economic income since accrual start
     unbooked_per_100: float                 # true_accrued - vendor_accrued (headline basis)
     unbooked_income_usd: float              # par-weighted, headline (option a)
+    income_next_12m_document: float = 0.0     # forward income run-rate under document terms
+    income_next_12m_vendor: float = 0.0       # what accounting would book from vendor terms
+    run_rate_gap_usd: float = 0.0             # (document - vendor) next-12m income, par-weighted
     window_start: date | None = None
     unbooked_window_usd: float | None = None  # since acquisition (option b), if supplied
     schedule: list[AccretionPoint] = field(default_factory=list)
