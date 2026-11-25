@@ -21,7 +21,8 @@ Nothing is written back to any accounting system. Approved findings export to CS
 docker compose up --build
 ```
 
-Open http://localhost:8080 and enter a reviewer name (top right). Extraction calls the
+Open http://localhost:18080 and enter a reviewer name (top right). Host ports are 18080 (UI) and
+18000 (API) to avoid clashing with other local services; change them in `docker-compose.yml`. Extraction calls the
 Anthropic API: set `ANTHROPIC_API_KEY` in your shell first. To demo without a key, replay
 the recorded extractions for the two sample official statements:
 
@@ -33,7 +34,7 @@ Load the synthetic muni + agency MBS universe (book of record, three vendor file
 history, cash ledger, pool disclosure) and analyse the sample offering documents through the API:
 
 ```bash
-pip install httpx && python backend/scripts/demo_seed.py --api http://localhost:8080
+pip install httpx && python backend/scripts/demo_seed.py --api http://localhost:18080
 ```
 
 Configuration (environment, prefix `TERMSCHECK_`): `EXTRACTION_MODEL` (default

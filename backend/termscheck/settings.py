@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     extraction_server_fallback: bool = True  # server-side refusal fallback (beta)
     llm_mode: str = "anthropic"             # anthropic | recorded (demo without an API key)
     recorded_dir: str = "../data/recorded_extractions"
-    cors_origins: str = "http://localhost:5173,http://localhost:8080"
+    cors_origins: str = "http://localhost:5173,http://localhost:18080"
 
 
 settings = Settings()
