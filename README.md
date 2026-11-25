@@ -34,7 +34,7 @@ Load the synthetic muni + agency MBS universe (book of record, three vendor file
 history, cash ledger, pool disclosure) and analyse the sample offering documents through the API:
 
 ```bash
-pip install httpx && python backend/scripts/demo_seed.py
+python3 backend/scripts/demo_seed.py      # standard library only, no installs
 ```
 
 Configuration (environment, prefix `TERMSCHECK_`): `EXTRACTION_MODEL` (default
