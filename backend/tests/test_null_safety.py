@@ -46,6 +46,11 @@ def test_blank_cells_do_not_reject_file_but_required_ones_do():
 def test_no_coercion_patterns_in_source():
     """Static guard: no `x or 0` / `fillna(0)` anywhere, and no `.get(<term field>, 0)`."""
     terms = "coupon|rate|factor|payment_frequency|vendor_yield|payment_delay_days|price|par|cash|booked_income"
+    io_pat = re.compile(r'\bor ""')       # CSV/export layers: 0 must never be written as blank
+    pkg = Path(__file__).resolve().parents[1] / "termscheck"
+    io_hits = [f"{f.name}:{i}" for d in ("ingest", "services") for f in (pkg / d).rglob("*.py")
+               for i, line in enumerate(f.read_text().splitlines(), 1) if io_pat.search(line.split("#")[0])]
+    assert not io_hits, io_hits
     pat = re.compile(r"\bor 0(\.0)?\b|fillna\(0|\.get\(\s*['\"](" + terms + r")['\"]\s*,\s*0(\.0)?\)")
     hits = []
     for f in (Path(__file__).resolve().parents[1] / "termscheck").rglob("*.py"):
@@ -77,3 +82,13 @@ def test_blank_coupon_survives_database_screens_and_api(client, engine):
     assert body["cusips"][0]["coupon"] is None
     ev = client.get("/api/audit?event_type=upload.accepted").json()
     assert any(e["payload"].get("blank_cells", {}).get("coupon") == 1 for e in ev)
+
+
+def test_zero_frequency_round_trips_as_zero():
+    from termscheck.core.records import Position
+    from termscheck.ingest import holdings_csv
+    r = parse_holdings(HDR + ROW.format(coupon="0", freq="0"))
+    text = holdings_csv([(r.positions[0], r.records[0])])
+    back = parse_holdings(text).records[0]
+    assert back.payment_frequency == 0 and back.state_of("payment_frequency") == "value"
+    assert back.coupon == 0.0 and back.state_of("coupon") == "value"

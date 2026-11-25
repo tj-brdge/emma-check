@@ -7,6 +7,11 @@ import io
 from termscheck.core.records import Position, PricePoint, SecurityRecord
 
 
+def _cell(x) -> str:
+    """Blank only for None: 0 must be written as 0."""
+    return "" if x is None else str(x)
+
+
 def _pct(x: float | None) -> str:
     return "" if x is None else f"{x * 100:.4f}"
 
@@ -21,7 +26,7 @@ def holdings_csv(pairs: list[tuple[Position, SecurityRecord]]) -> str:
         w.writerow([pos.portfolio, r.cusip, r.description, f"{pos.par:.2f}", f"{r.price:.3f}",
                     r.price_convention, _pct(r.coupon), r.accrual_type, r.maturity_date.isoformat(),
                     r.issue_date.isoformat(), r.rating, r.sector, r.state, _pct(r.vendor_yield),
-                    r.payment_frequency or "", r.day_count or "",
+                    _cell(r.payment_frequency), _cell(r.day_count),
                     pos.acquisition_date.isoformat() if pos.acquisition_date else ""])
     return buf.getvalue()
 
@@ -35,7 +40,7 @@ def vendor_csv(records: list[SecurityRecord]) -> str:
     for r in records:
         w.writerow([r.cusip, r.description, f"{r.price:.3f}", r.price_convention, _pct(r.coupon),
                     r.accrual_type, r.maturity_date.isoformat(), r.issue_date.isoformat(), r.rating,
-                    r.sector, r.state, _pct(r.vendor_yield), r.payment_frequency or "", r.day_count or ""])
+                    r.sector, r.state, _pct(r.vendor_yield), _cell(r.payment_frequency), _cell(r.day_count)])
     return buf.getvalue()
 
 

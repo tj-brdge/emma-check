@@ -30,6 +30,7 @@ class ScreenConfig:
 
     # null vs zero / frequency contradiction
     blank_alone_severity: int = 30           # blank in one source with no zero anywhere
+    blank_alone_fields: tuple[str, ...] = ("coupon", "factor")   # benign blanks elsewhere are not reported
     # cash reconciliation
     cash_shortfall_pct: float = 0.10         # booked income below cash by more than this share
     cash_rate_gap_bp: float = 25.0           # ...and the implied rate differs by more than this

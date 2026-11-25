@@ -28,7 +28,7 @@ class NullVsZeroScreen:
                     conflicts[name] = {"blank_in": blank, "zero_in": zero,
                                        "values": {r.vendor: _show(r, name) for r in recs},
                                        "raw": {r.vendor: r.raw.get(name) for r in recs if name in r.raw}}
-                elif blank:
+                elif blank and name in config.blank_alone_fields:
                     blanks_only[name] = {"blank_in": blank, "values": {r.vendor: _show(r, name) for r in recs}}
             if conflicts:
                 sev = clamp_severity(max(FIELDS[k] for k in conflicts) + 5 * (len(conflicts) - 1))

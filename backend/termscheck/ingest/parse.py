@@ -60,7 +60,8 @@ class _RowParser:
         if col not in self.row:
             self.states[col] = ABSENT
             return None
-        self.raws[col] = self.row.get(col) or ""
+        cell = self.row.get(col)
+        self.raws[col] = "" if cell is None else cell     # raw text exactly as supplied
         if self.raw(col) is None:
             self.states[col] = BLANK
             return None
@@ -140,7 +141,7 @@ def _read(text: str, required: list[str], optional: list[str]) -> tuple[list[dic
         return [], [RowError(0, None, "file is empty")]
     mapping = {}
     for h in reader.fieldnames:
-        k = (h or "").strip().lower().replace(" ", "_")
+        k = ("" if h is None else h).strip().lower().replace(" ", "_")
         mapping[h] = S.ALIASES.get(k, k)
     missing = [c for c in required if c not in mapping.values()]
     if missing:
