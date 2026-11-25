@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
 
+from ..audit import record
 from ..db.models import Holding, PriceHistory, UploadBatch, VendorTerms
 from ..ingest import ParseResult, parse_holdings, parse_price_history, parse_vendor
 
@@ -56,4 +57,15 @@ def ingest_file(session: Session, *, kind: str, filename: str, text: str, user: 
             dict(batch_id=batch.id, cusip=p.cusip, price_date=p.price_date, price=p.price,
                  convention=p.convention) for p in res.prices])
     session.flush()
+    record(session, actor=user, event_type="upload.accepted", entity_type="upload_batch", entity_id=batch.id,
+           payload={"kind": kind, "vendor": vendor, "filename": filename, "sha256": res.sha256,
+                    "rows": res.row_count, "positions": len(res.positions), "records": len(res.records),
+                    "prices": len(res.prices)})
     return IngestOutcome(batch, res)
+
+
+def record_rejection(session: Session, *, kind: str, filename: str, user: str, result: ParseResult) -> None:
+    record(session, actor=user, event_type="upload.rejected", entity_type="upload", entity_id=result.sha256[:16],
+           payload={"kind": kind, "filename": filename, "sha256": result.sha256, "rows": result.row_count,
+                    "error_count": len(result.errors),
+                    "errors": [vars(e) for e in result.errors[:50]]})

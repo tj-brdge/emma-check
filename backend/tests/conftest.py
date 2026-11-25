@@ -50,6 +50,8 @@ def db(engine):
         tables = [r[0] for r in c.execute(text(
             "select tablename from pg_tables where schemaname='public' and tablename<>'alembic_version'"))]
         if tables:
+            # Append-only triggers block TRUNCATE; tests (superuser) bypass them via replica mode.
+            c.execute(text("SET LOCAL session_replication_role = replica"))
             c.execute(text("TRUNCATE " + ", ".join(tables) + " RESTART IDENTITY CASCADE"))
     S = sessionmaker(engine, expire_on_commit=False)
     with S() as s:

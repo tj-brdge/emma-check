@@ -6,6 +6,7 @@ from datetime import date, datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ..audit import record
 from ..db.models import Holding, PriceHistory, ScreenFlag, ScreenRun, UploadBatch, VendorTerms
 from ..screens import Position, PricePoint, ScreenConfig, ScreenInput, SecurityRecord, run_screens
 
@@ -49,19 +50,28 @@ def execute_screen_run(session: Session, *, as_of: date, holdings_batch_id: int,
                        config_overrides: dict | None = None) -> ScreenRun:
     config = ScreenConfig(**(config_overrides or {}))
     data = load_screen_input(session, as_of, holdings_batch_id, secondary_batch_id, history_batch_id)
+    started = datetime.now(timezone.utc)
+    result = run_screens(data, config)
     run = ScreenRun(as_of=as_of, holdings_batch_id=holdings_batch_id,
                     secondary_batch_id=secondary_batch_id, history_batch_id=history_batch_id,
-                    config=config.as_dict(), started_by=user)
+                    config=config.as_dict(), started_by=user, started_at=started,
+                    finished_at=datetime.now(timezone.utc), flag_count=len(result.flags))
     session.add(run)
     session.flush()
-    result = run_screens(data, config)
     for f in result.flags:
         session.add(ScreenFlag(run_id=run.id, cusip=f.cusip, rule=f.rule, severity=f.severity,
                                message=f.message, inputs=_jsonable(f.inputs),
                                computed=_jsonable(f.computed)))
-    run.flag_count = len(result.flags)
-    run.finished_at = datetime.now(timezone.utc)
     session.flush()
+    by_rule: dict[str, int] = {}
+    for f in result.flags:
+        by_rule[f.rule] = by_rule.get(f.rule, 0) + 1
+    record(session, actor=user, event_type="screen_run.completed", entity_type="screen_run", entity_id=run.id,
+           payload={"as_of": as_of, "holdings_batch_id": holdings_batch_id,
+                    "secondary_batch_id": secondary_batch_id, "history_batch_id": history_batch_id,
+                    "config": run.config, "holdings": len(data.positions), "flag_count": len(result.flags),
+                    "flags_by_rule": by_rule, "flagged_cusips": len(result.flagged_cusips()),
+                    "flags": [{"cusip": f.cusip, "rule": f.rule, "severity": f.severity} for f in result.flags]})
     return run
 
 

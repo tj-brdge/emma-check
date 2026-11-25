@@ -3,6 +3,7 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ..audit import record
 from ..db.models import Document, DocumentPage, Extraction
 from ..extraction import ExtractionLLMError, extract_terms_from_pages
 from ..extraction.llm import ExtractionLLM
@@ -24,6 +25,9 @@ def register_document(session: Session, store: UploadSource, *, cusip: str, file
     for i, t in enumerate(pages, start=1):
         session.add(DocumentPage(document_id=doc.id, page_no=i, text=t))
     session.flush()
+    record(session, actor=user, event_type="document.registered", entity_type="document", entity_id=doc.id,
+           payload={"cusip": doc.cusip, "source": doc.source, "filename": filename, "sha256": doc.sha256,
+                    "pages": doc.page_count})
     return doc
 
 
@@ -53,6 +57,9 @@ def run_extraction(session: Session, *, document_id: int, llm: ExtractionLLM, us
         ex.error = str(e)
         session.add(ex)
         session.flush()
+        record(session, actor=user, event_type="extraction.failed", entity_type="extraction", entity_id=ex.id,
+               payload={"cusip": cusip, "document_id": doc.id, "model": model,
+                        "prompt_version": ex.prompt_version, "error": ex.error})
         return ex
     ex.prompt_version = res.prompt_version
     ex.model_served = res.model
@@ -65,6 +72,13 @@ def run_extraction(session: Session, *, document_id: int, llm: ExtractionLLM, us
     ex.llm_meta = jsonable(res.llm_meta)
     session.add(ex)
     session.flush()
+    record(session, actor=user, event_type="extraction.completed", entity_type="extraction", entity_id=ex.id,
+           payload={"cusip": cusip, "document_id": doc.id, "document_sha256": doc.sha256,
+                    "model_requested": model, "model_served": ex.model_served,
+                    "prompt_version": ex.prompt_version, "status": ex.status, "problems": ex.problems,
+                    "pages_sent": res.selection.pages, "interest_terms": ex.interest_terms,
+                    "citations": {c.field: {"page": c.page, "status": c.status} for c in res.checks},
+                    "llm": ex.llm_meta})
     return ex
 
 

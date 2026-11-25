@@ -3,6 +3,7 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ..audit import record
 from ..db.models import Computation, Extraction, Finding, Holding, ReviewAction, VendorTerms
 from ..review import apply, rows_to_csv
 from .extraction import citation_index
@@ -18,6 +19,9 @@ def act(session: Session, *, finding_id: int, action: str, comment: str | None, 
     session.add(ra)
     f.status = new.value
     session.flush()
+    record(session, actor=user, event_type=f"review.{action}", entity_type="finding", entity_id=f.id,
+           payload={"review_action_id": ra.id, "cusip": f.cusip, "from_status": ra.from_status,
+                    "to_status": ra.to_status, "comment": ra.comment, "income_impact_usd": f.income_impact_usd})
     return ra
 
 
@@ -67,8 +71,16 @@ def approved_rows(session: Session) -> list[dict]:
     return rows
 
 
-def approved_csv(session: Session) -> str:
-    return rows_to_csv(approved_rows(session))
+def approved_csv(session: Session, user: str) -> str:
+    import hashlib
+    rows = approved_rows(session)
+    body = rows_to_csv(rows)
+    record(session, actor=user, event_type="export.approved_csv", entity_type="export",
+           entity_id=hashlib.sha256(body.encode()).hexdigest()[:16],
+           payload={"rows": len(rows), "finding_ids": sorted({r["finding_id"] for r in rows}),
+                    "sha256": hashlib.sha256(body.encode()).hexdigest(),
+                    "income_impact_usd": round(sum(float(r["unbooked_income_usd"] or 0) for r in rows), 2)})
+    return body
 
 
 def _f(x, nd: int = 6):

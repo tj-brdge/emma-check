@@ -45,7 +45,7 @@ def get_actions(finding_id: int, session: Session = Depends(get_session)):
 
 @router.get("/exports/approved.csv")
 def export_approved(user: str = Depends(current_user), session: Session = Depends(get_session)):
-    body = approved_csv(session)
+    body = approved_csv(session, user)
     session.commit()
     return Response(body, media_type="text/csv",
                     headers={"Content-Disposition": 'attachment; filename="terms_check_approved.csv"'})

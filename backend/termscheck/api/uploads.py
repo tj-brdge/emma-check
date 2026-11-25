@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..db.models import UploadBatch
-from ..services.ingestion import KINDS, IngestError, ingest_file
+from ..services.ingestion import KINDS, IngestError, ingest_file, record_rejection
 from .deps import current_user, get_session
 
 router = APIRouter(prefix="/api", tags=["uploads"])
@@ -32,6 +32,8 @@ async def upload(kind: str, file: UploadFile = File(...), vendor: str | None = F
                           user=user, vendor=vendor)
     except IngestError as e:
         session.rollback()
+        record_rejection(session, kind=kind, filename=file.filename or "upload.csv", user=user, result=e.result)
+        session.commit()
         raise HTTPException(422, {"message": "file rejected; nothing was ingested",
                                   "errors": [vars(x) for x in e.result.errors[:500]],
                                   "error_count": len(e.result.errors)})

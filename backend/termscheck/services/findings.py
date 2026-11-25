@@ -3,6 +3,7 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ..audit import record
 from ..bondmath import BONDMATH_VERSION
 from ..db.models import Computation, Extraction, Finding, Holding, ScreenFlag, ScreenRun, VendorTerms
 from ..findings import build_finding
@@ -51,13 +52,24 @@ def create_finding(session: Session, *, screen_run_id: int, extraction_id: int, 
         comparison=draft.comparison, rules=rules, status="open", created_by=user)
     session.add(finding)
     session.flush()
+    comps = []
     for h, pi in zip(holdings, draft.positions):
-        session.add(Computation(
+        comps.append(Computation(
             finding_id=finding.id, extraction_id=ex.id, holding_id=h.id, as_of=run.as_of,
             inputs=jsonable({"terms": ex.interest_terms, "vendor": {
                 "price": vt.price, "price_convention": vt.price_convention, "coupon": vt.coupon,
                 "accrual_type": vt.accrual_type}, "par": h.par, "acquisition_date": h.acquisition_date}),
             outputs=jsonable({k: v for k, v in vars(pi.treatment).items() if k != "schedule"}),
             bondmath_version=BONDMATH_VERSION))
+    session.add_all(comps)
     session.flush()
+    for c in comps:
+        record(session, actor=user, event_type="computation.created", entity_type="computation", entity_id=c.id,
+               payload={"finding_id": finding.id, "cusip": finding.cusip, "holding_id": c.holding_id,
+                        "as_of": c.as_of, "bondmath_version": c.bondmath_version, "inputs": c.inputs,
+                        "outputs": c.outputs})
+    record(session, actor=user, event_type="finding.created", entity_type="finding", entity_id=finding.id,
+           payload={"cusip": finding.cusip, "screen_run_id": run.id, "extraction_id": ex.id,
+                    "income_impact_usd": finding.income_impact_usd, "run_rate_gap_usd": finding.run_rate_gap_usd,
+                    "headline": finding.headline, "rules": rules, "computation_ids": [c.id for c in comps]})
     return finding
